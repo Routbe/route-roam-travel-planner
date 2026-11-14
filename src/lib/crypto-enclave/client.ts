@@ -261,6 +261,7 @@ export const enclave = {
     backspace: (slot: string) => callEnclave("password.backspace", { slot }),
     clear: (slot: string) => callEnclave("password.clear", { slot }),
     close: (slot: string) => callEnclave("password.close", { slot }),
+    equal: (a: string, b: string) => callEnclave("password.equal", { a, b }),
   },
   pow: {
     /** The challenge is transferred. Abortable with abortRunningEnclaveOperation(). */

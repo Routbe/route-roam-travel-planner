@@ -99,6 +99,8 @@ export interface EnclaveOps {
   "password.backspace": { req: { slot: string }; res: { length: number } };
   "password.clear": { req: { slot: string }; res: { length: number } };
   "password.close": { req: { slot: string }; res: null };
+  /** Whether two paranoid slots hold the same bytes (constant time over the whole slot); both stay open. */
+  "password.equal": { req: { a: string; b: string }; res: { equal: boolean } };
   /** Hashcash nonce for a server challenge; abortable between batches. */
   "pow.solve": { req: { challenge: Uint8Array; bits: number }; res: { nonce: Uint8Array } };
   /** The password source is consumed: a paranoid slot is wiped and closed, typed bytes are wiped. */
