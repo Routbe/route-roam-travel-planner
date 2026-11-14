@@ -1,0 +1,60 @@
+# Rebuilds the OPAQUE + Argon2id engine (wasm/rout-opaque) from source with the
+# pinned official rustup toolchain and fails unless the bytes equal the
+# committed module, its embedded base64 copy and the SHA-384 pin in
+# src/lib/crypto-enclave/opaque-wasm-pin.ts (owner rule F.2). The browser
+# loader refuses any other bytes, so a red run here means the shipped engine
+# can no longer be traced back to its source.
+name: Wasm reproducible build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wasm-reproducible-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rout-opaque:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned toolchain (wasm/rout-opaque/rust-toolchain.toml)
+        working-directory: wasm/rout-opaque
+        run: |
+          rustup toolchain install 1.95.0 --profile minimal --target wasm32-unknown-unknown --no-self-update
+          rustc -vV
+
+      - name: Committed module, base64 copy and pin agree
+        run: |
+          set -euo pipefail
+          WASM=src/lib/crypto-enclave/wasm/rout-opaque.wasm
+          PINNED="$(grep -oE '[0-9a-f]{96}' src/lib/crypto-enclave/opaque-wasm-pin.ts | head -1)"
+          HAVE="$(sha384sum "$WASM" | cut -d' ' -f1)"
+          test "$HAVE" = "$PINNED" || { echo "committed .wasm $HAVE != pin $PINNED"; exit 1; }
+          sed -n 's/^  "\([A-Za-z0-9+/=]*\)";$/\1/p' src/lib/crypto-enclave/wasm/rout-opaque.wasm.base64.ts | base64 -d > "$RUNNER_TEMP/embedded.wasm"
+          cmp "$RUNNER_TEMP/embedded.wasm" "$WASM"
+          echo "sri sha384-$(xxd -r -p <<<"$PINNED" | base64 -w0)"
+
+      - name: Rebuild from source and compare (build.sh --check)
+        run: wasm/rout-opaque/build.sh --check
+
+      - name: Rebuild a second time in a fresh target dir (determinism)
+        run: wasm/rout-opaque/build.sh --check
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo '### Wasm reproducible build'
+            echo "pin: \`$(grep -oE '[0-9a-f]{96}' src/lib/crypto-enclave/opaque-wasm-pin.ts | head -1)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
