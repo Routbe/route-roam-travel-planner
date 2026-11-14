@@ -1,0 +1,6 @@
+# Official rustup toolchain the committed rout-opaque.wasm is reproducible from.
+# build.sh also checks the rustc commit and LLVM version; keep the three in step.
+[toolchain]
+channel = "1.95.0"
+profile = "minimal"
+targets = ["wasm32-unknown-unknown"]

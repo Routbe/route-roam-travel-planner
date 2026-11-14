@@ -150,4 +150,6 @@
 - [ ] Stap 8: hybride PQ-ratchet + RVE2
 - [ ] Stap 9: RLS non-interference-model (Z3/Lean) vergeleken met de snapshot in CI
 - [x] /secure/*-documenten met COOP/COEP (wachtwoordpagina's)
-- [ ] Kluis- en herstelschermen ook naar /secure/*; Wasm SRI (SHA-384) en reproduceerbare builds
+- [x] Wasm SRI (SHA-384) en reproduceerbare build van de wachtwoordmotor: officiële rustup 1.95.0 (LLVM 22.1.2) vastgezet, pin opnieuw gezet, CI .github/workflows/wasm-reproducible.yml (lokaal 2x uit twee mappen gelijk)
+- [ ] Wasm-CI nazorg: eerste run op GitHub bekijken zodra de code daar staat
+- [ ] Kluis- en herstelschermen ook naar /secure/*
