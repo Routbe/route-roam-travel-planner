@@ -1,0 +1,3 @@
+## Recovery v4 formal model
+- Recovery state changes follow RecoveryV4.tla: a change to recovery SQL or flow updates the model first and keeps `run-tlc.sh` green (main models hold, every mutant breaks on its named property, every W_* witness is reached); CI runs it via .github/workflows/tla-recovery-v4.yml with a SHA-256-pinned tla2tools.jar. Why: the SQL implements the checked transitions, and mutants plus witnesses keep the proof from turning vacuous.
+- Keep the state space canonical (answered requests leave outReq, dead idempotency keys are pruned, Retry only after request and answer are both gone) instead of using a TLC VIEW. Why: TLC 2.19 crashes writing states under VIEW, and a canonical state keeps CI within minutes.

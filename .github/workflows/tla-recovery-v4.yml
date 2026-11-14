@@ -1,0 +1,66 @@
+# Model-checks the Recovery v4 state machine (formal/recovery-v4) with TLC on
+# every pull request. Fails when an invariant, action property or liveness
+# property breaks, when a mutant no longer produces its counterexample, or when
+# a reachability witness is no longer reached.
+name: TLA+ recovery v4
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tla-recovery-v4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tlc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # TLC 2.19 (tla2tools v1.7.4), immutable release asset, pinned by SHA-256.
+      TLA_TOOLS_URL: https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar
+      TLA_TOOLS_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Fetch and verify tla2tools.jar
+        run: |
+          curl --fail --silent --show-error --location --retry 3 -o "$RUNNER_TEMP/tla2tools.jar" "$TLA_TOOLS_URL"
+          echo "$TLA_TOOLS_SHA256  $RUNNER_TEMP/tla2tools.jar" | sha256sum --check --strict
+
+      - name: Run TLC (main models, mutants, witnesses)
+        env:
+          JAVA: ${{ env.JAVA_HOME_21_X64 }}/bin/java
+          TLA_JAR: ${{ runner.temp }}/tla2tools.jar
+          TLC_OUT: ${{ runner.temp }}/tlc-recovery-v4
+          JAVA_TOOL_OPTIONS: -Xmx6g
+        run: |
+          "$JAVA" -version
+          formal/recovery-v4/run-tlc.sh
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo '### TLA+ Recovery v4'
+            echo '```'
+            cat "$RUNNER_TEMP/tlc-recovery-v4/summary.txt" 2>/dev/null || echo 'no summary'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload TLC logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tlc-recovery-v4
+          path: |
+            ${{ runner.temp }}/tlc-recovery-v4/*.log
+            ${{ runner.temp }}/tlc-recovery-v4/summary.txt
+          retention-days: 30

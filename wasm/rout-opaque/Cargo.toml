@@ -1,0 +1,29 @@
+[package]
+name = "rout-opaque"
+version = "1.0.0"
+edition = "2021"
+publish = false
+license = "AGPL-3.0-only"
+description = "ROUT OPAQUE (RFC 9807, opaque-ke) + Argon2id KSF in one fixed-memory, allocator-free Wasm module"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+# Exact versions: the committed .wasm is reproducible only from this lock.
+[dependencies]
+opaque-ke = { version = "=4.0.1", default-features = false, features = ["ristretto255"] }
+argon2 = { version = "=0.5.3", default-features = false }
+rand_core = { version = "0.6", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+generic-array = { version = "=0.14.7", default-features = false }
+zeroize = { version = "1.8", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+debug = false
+strip = true
+incremental = false

@@ -1,0 +1,166 @@
+/**
+ * Recovery ceremony (3-of-4: passkey, ROUT Card, paper words, ROUT's share):
+ * server boundary. Only version 3 is saved (db-pending/0268
+ * rout_recovery_ceremony_put_v3); older versions are only read. The server
+ * stores only RVE1 envelopes and can open only its own shard
+ * (server_guardian); a save in which any other shard is sealed to ROUT's key
+ * is refused, so ROUT never holds two shares, let alone three. Saving or
+ * deleting needs a fresh passkey step-up; a restore hands out the stored
+ * ceremony plus the opened server share, is rate limited fail-closed and
+ * always e-mails the owner.
+ */
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireAuth } from "@/lib/auth/middleware";
+import { B64_RE, CEREMONY_ID_RE, CEREMONY_RESTORES_PER_HOUR, MASTER_B64_MAX, SHARD_B64_MAX, type CeremonyRow } from "./ceremony-wire";
+
+const shard = z.string().min(64).max(SHARD_B64_MAX).regex(B64_RE);
+const wireSchema = z.object({
+  ceremonyId: z.string().regex(CEREMONY_ID_RE),
+  keyId: z.string().min(8).max(200).regex(/^[A-Za-z0-9_-]+$/),
+  sealedMaster: z.string().min(40).max(MASTER_B64_MAX).regex(B64_RE),
+  // Only 3-of-4 is saved: the card shard is required. strict(): an unknown shard
+  // or field is refused, never stripped, so no ceremony is saved that can no longer open.
+  version: z.literal(3),
+  shards: z.object({ device_prf: shard, paper_guardian: shard, server_guardian: shard, nfc_card: shard }).strict(),
+}).strict();
+const credentialSchema = z.string().min(8).max(1400).regex(/^[A-Za-z0-9+/=_-]+$/);
+
+/** Unknown versions read as 1 (outdated) so the UI asks for a new 3-of-4 vault instead of trusting it. */
+function ceremonyVersionOf(v: unknown): 1 | 2 | 3 {
+  const n = Number(v);
+  return n === 3 ? 3 : n === 2 ? 2 : 1;
+}
+
+const PUT_V3 = "public.rout_recovery_ceremony_put_v3(text,text,text,text,text,text,text,text,text)";
+
+/** Whether this database can store a 3-of-4 vault (db-pending/0268 applied). */
+async function canStoreVersion3(): Promise<boolean> {
+  const { sql } = await import("@/lib/neon");
+  const rows = (await sql`select to_regprocedure(${PUT_V3}) is not null as ok`) as { ok: boolean }[];
+  return rows[0]?.ok === true;
+}
+
+/** Postgres "undefined function": the 3-of-4 save (db-pending/0268) is not on this database yet. */
+const isMissingFunction = (e: unknown) => typeof e === "object" && e !== null && (e as { code?: unknown }).code === "42883";
+
+async function audit(userId: string, eventType: string, payload: Record<string, unknown> = {}) {
+  const { recordSecurityEvent } = await import("@/lib/audit-log.server");
+  await recordSecurityEvent({ eventType, userId, payload });
+}
+
+/** Status only: whether a ceremony exists, for which Master Key, and its version (3 = 3-of-4; 1 and 2 are outdated). */
+export const getRecoveryCeremonyStatus = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async () => {
+    const { sql } = await import("@/lib/neon");
+    const rows = (await sql`select * from public.rout_recovery_ceremony_status_v2()`) as { ceremony_id: string; key_id: string; created_at: string; ceremony_version: number }[];
+    const r = rows[0];
+    const login = r ? ((await sql`select public.rout_recovery_ceremony_login_key() is not null as ok`) as { ok: boolean }[]) : [];
+    return {
+      /** False until db-pending/0268 is live: setting up a vault is then refused instead of saving anything weaker. */
+      canSetUp: await canStoreVersion3(),
+      ceremony: r
+        ? { ceremonyId: r.ceremony_id, keyId: r.key_id, createdAt: String(r.created_at), canSignIn: login[0]?.ok === true, version: ceremonyVersionOf(r.ceremony_version) }
+        : null,
+    };
+  });
+
+/** Public key of ROUT's factor for this member; the browser seals one shard to it. */
+export const getRecoveryServerKey = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { serverFactorPublicKey } = await import("./server-factor.server");
+    const { toB64 } = await import("./ceremony-wire");
+    return { publicKey: toB64(serverFactorPublicKey(context.userId)) };
+  });
+
+export const saveRecoveryCeremony = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ ceremony: wireSchema, deviceCredential: credentialSchema, loginKey: z.string().regex(/^[A-Za-z0-9+/]{43}=$/) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    // Checked before the step-up, so a passkey confirmation is never spent on a save that cannot happen.
+    if (!(await canStoreVersion3())) return { ok: false as const, error: "schema_pending" };
+    const { requirePasskeyStepUp } = await import("@/lib/auth/step-up-guard.server");
+    await requirePasskeyStepUp(context.userId, "recovery_vault");
+    const { ceremonyFromWire } = await import("./ceremony-wire");
+    const { isOwnServerShard, openServerShard } = await import("./server-factor.server");
+    const c = data.ceremony;
+    // The server shard must be sealed to ROUT's key for this member and open.
+    const ceremony = ceremonyFromWire(c, context.userId);
+    if (ceremony.version !== 3) return { ok: false as const, error: "version_refused" };
+    if (!isOwnServerShard(context.userId, ceremony.shards.server_guardian)) return { ok: false as const, error: "server_shard_mismatch" };
+    // No other shard may be sealed to ROUT's key: ROUT must never hold two shares.
+    const others = [ceremony.shards.device_prf, ceremony.shards.paper_guardian, ceremony.shards.nfc_card];
+    if (others.some((s) => isOwnServerShard(context.userId, s))) return { ok: false as const, error: "server_shard_mismatch" };
+    try {
+      openServerShard(ceremony, context.userId).fill(0);
+    } catch {
+      return { ok: false as const, error: "server_shard_mismatch" };
+    }
+    const { sql } = await import("@/lib/neon");
+    try {
+      await sql`select public.rout_recovery_ceremony_put_v3(${c.ceremonyId}, ${c.keyId}, ${c.sealedMaster}, ${c.shards.device_prf}, ${c.shards.paper_guardian}, ${c.shards.server_guardian}, ${c.shards.nfc_card}, ${data.deviceCredential}, ${data.loginKey})`;
+    } catch (e) {
+      // Fail closed: until 0268 is live nothing is saved, and never as a weaker version.
+      if (isMissingFunction(e)) return { ok: false as const, error: "schema_pending" };
+      throw e;
+    }
+    const { notifyUser } = await import("@/lib/notifications.server");
+    await notifyUser(context.userId, "recovery_vault_changed", { action: "saved" });
+    await audit(context.userId, "recovery_ceremony.saved", { ceremonyId: c.ceremonyId, version: ceremony.version });
+    return { ok: true as const };
+  });
+
+export const deleteRecoveryCeremony = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { requirePasskeyStepUp } = await import("@/lib/auth/step-up-guard.server");
+    await requirePasskeyStepUp(context.userId, "recovery_vault");
+    const { sql } = await import("@/lib/neon");
+    await sql`select public.rout_recovery_ceremony_delete()`;
+    const { notifyUser } = await import("@/lib/notifications.server");
+    await notifyUser(context.userId, "recovery_vault_changed", { action: "deleted" });
+    await audit(context.userId, "recovery_ceremony.deleted");
+    return { ok: true as const };
+  });
+
+/** Hands out the stored ceremony and ROUT's opened share for a restore on this device. */
+export const beginCeremonyRestore = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { hitRateLimit } = await import("@/lib/rate-limit-db.server");
+    const limit = await hitRateLimit("recoveryCeremonyRestore", context.userId, { limit: CEREMONY_RESTORES_PER_HOUR, windowSec: 3600 }, { failClosed: true });
+    if (!limit.ok) {
+      await audit(context.userId, "recovery_ceremony.rate_limited");
+      return { ok: false as const, error: "rate_limited" as const };
+    }
+    const { sql } = await import("@/lib/neon");
+    const rows = (await sql`select * from public.rout_recovery_ceremony_get_v2()`) as CeremonyRow[];
+    const r = rows[0];
+    if (!r) return { ok: false as const, error: "no_ceremony" as const };
+    const { ceremonyFromWire, ceremonyRowToWire, toB64 } = await import("./ceremony-wire");
+    const wire = ceremonyRowToWire(r);
+    const { openServerShard } = await import("./server-factor.server");
+    const share = openServerShard(ceremonyFromWire(wire, context.userId), context.userId);
+    let serverShare: string;
+    try {
+      serverShare = toB64(share);
+    } finally {
+      share.fill(0);
+    }
+    const { notifyUser } = await import("@/lib/notifications.server");
+    await notifyUser(context.userId, "recovery_attempt", {});
+    await audit(context.userId, "recovery_ceremony.restore_started", { ceremonyId: r.ceremony_id });
+    return { ok: true as const, ceremony: wire, serverShare, deviceCredential: r.device_credential };
+  });
+
+export const finishCeremonyRestore = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d: unknown) => z.object({ outcome: z.enum(["restored", "failed"]) }).parse(d))
+  .handler(async ({ data, context }) => {
+    await audit(context.userId, `recovery_ceremony.${data.outcome}`);
+    return { ok: true as const };
+  });
