@@ -393,3 +393,48 @@ Leesvragen: `public.schema_migrations`, `information_schema.columns`, `pg_proc.p
 - **Integriteit:** `opaque-engine.ts` berekent de SHA-384 van de module en weigert te compileren als die niet gelijk is aan `opaque-wasm-pin.ts`. SRI-vorm van de huidige pin: `sha384-YZ6BJR41Ot4pP8gmWYDlI3wm/32H/dXACkvf9HJ9oqLRdL2NS4FKPuS3gl49HDi2` (hex `619e8125…1c38b6`).
 - **Correctie bij ronde 2 — pin opnieuw gezet:** de eerder vastgezette module (`971a75ee…57d44b3`) was gebouwd met een distributiebouw van rustc 1.95.0 met LLVM 21.1.8. De officiële rustup-bouw van dezelfde versie (zelfde commit `59807616e`, maar LLVM 22.1.2) maakt andere bytes, dus een CI-controle op GitHub zou altijd rood zijn. De broncode is ongewijzigd; de module is opnieuw gebouwd met de officiële rustup-bouw en de pin is daarop gezet. `build.sh` controleert nu ook de rustc-commit en de LLVM-versie en weigert elke andere bouw; `wasm/rout-opaque/rust-toolchain.toml` kiest de juiste toolchain. Omdat 0270 nog niet is toegepast bestaan er geen wachtwoordregistraties die van de oude bytes afhangen; Argon2id en OPAQUE zijn bovendien vast gespecificeerd, dus de uitkomsten veranderen niet.
 - **CI:** `.github/workflows/wasm-reproducible.yml` controleert bij elke pull request dat de vastgelegde module, de base64-kopie en de pin overeenkomen, bouwt daarna twee keer vanaf de bron (`build.sh --check`, telkens in een lege map) en faalt bij elk verschil. Lokaal nagespeeld: twee bouwen, ook vanuit een andere map, gaven exact dezelfde SHA-384 als de pin; een distributiebouw werd geweigerd. De eerste run op GitHub moet de eigenaar nog bekijken.
+
+## Bijlage: gecorrigeerd overdrachtsdossier (2026-11-14, nagekeken tegen code en Neon)
+
+Vervangt het externe dossier "Technisch Overdrachtsdossier: ROUT Sovereign Engine & Auth v4" waar dat afwijkt. Alles hieronder is op 2026-11-14 tegen de bestanden en (alleen lezen) tegen Neon gecontroleerd.
+
+**1. Infrastructuur en vaste regels**
+- Eigen infrastructuur: Neon Postgres (app-rol `rout_app`, alleen via `DATABASE_URL`), hosting op **Vercel**, bestanden op Scaleway Object Storage, mail via Infomaniak/Brevo. Geen Lovable Cloud. De server-runtime moet ook op workerd draaien, maar de hosting is Vercel, niet Cloudflare Workers.
+- De agent past nooit zelf een migratie toe: elke migratie wacht in `db-pending/`, krijgt een PGlite-replaytest en een eigen, handmatige GO.
+- Elke SECURITY DEFINER-functie heeft `set search_path = pg_catalog, pg_temp` (vanaf 0258; `scripts/security-definer-policy.ts`, `bun scripts/security-definer-check.ts`). Interne helpers krijgen `revoke all ... from public, rout_app`; rout_app krijgt EXECUTE alleen op wat de app aanroept.
+- RVE1-enveloppen (`src/lib/crypto-enclave/pqc-envelope.ts`): ML-KEM-1024 + X25519, gebonden aan houder, soort en context.
+
+**2. Repository**
+- De repo is 1-op-1 geïmporteerd **zonder git-geschiedenis** (geen `.git`, `node_modules`, `.workspace`). Een uitspraak als "commit-keten synchroon / working tree clean" is hier niet controleerbaar.
+
+**3. Neon (alleen lezen, 2026-11-14)**
+- PostgreSQL 18.7. `public.schema_migrations`: 263 rijen; hoogste genummerde migratie **0267** (toegepast na aparte GO, checksum gelijk). `CODE_SCHEMA_LEVEL` = 0267 (`src/lib/schema-version.ts`).
+- **Niet** toegepast: 0265 (boekingsregister), 0268/0269 (herstel 3-van-4, moeten voor v4 herschreven worden), 0270 (OPAQUE + PoW).
+- 0267 voegde `recovery_factor` toe aan de toegestane doelen van kaarttik-grants en behield `public_proof`, `step_up` en `activation`.
+
+**4. Stap 2 — formeel model herstel v4** (`formal/recovery-v4/`)
+- `RecoveryV4.tla` met drie configuraties (`RecoveryV4.cfg`, `_faults.cfg`, `_live.cfg`), gedraaid door `formal/recovery-v4/run-tlc.sh`; CI: `.github/workflows/tla-recovery-v4.yml` (tla2tools.jar SHA-256-gepind).
+- Invarianten (exacte namen): `TypeOK`, `Exclusivity` (hoogstens één actieve **en** hoogstens één wachtende ceremonie), `LevelConsistent`, `StrictThreshold`, `NoHalfOpen`, `NoSplitBrain`, `NoFalseFailure`, `Recoverable`. Eigenschappen: `AuthorizedDowngrade` (terugschalen alleen met verse step-up), `CardNeverDegrades`, `ActiveOnlyByCommit`, en in faults/live ook `CeremonyTerminates` en `ClientsSettle`. Deadlockvrijheid via `CHECK_DEADLOCK TRUE` (geen eigenschap met die naam).
+- 5 mutanten breken elk op hun genoemde eigenschap; 10 getuigen (`W_*`) worden bereikt.
+- Bindend voor Stap 6: nieuwe mastergeneratie per ceremonie, idempotentiesleutels, tweede verse step-up bij terugschalen in de commit zelf, TTL op een wachtende ceremonie op de databaseklok. **De TTL-waarde is nog niet gekozen**; er staat nergens "120 s" voor ceremonies.
+
+**5. Stap 3 — wachtwoord met OPAQUE, Argon2id en PoW**
+- Server: `src/lib/better-auth.server.ts` registreert `opaquePasswordAuth()` (`src/lib/auth/opaque-password-plugin.ts`) en zet `emailAndPassword: { enabled: false }`. `src/lib/auth/sign-in-policy.ts` laat alleen `/opaque/login/*` en `/opaque/signup/*` door en weigert `/sign-in/email`, `/request-password-reset`, `/reset-password*` en `/change-password`. Serverstappen: `src/lib/auth/opaque-server.server.ts`. Leden: `src/lib/auth/opaque-member.functions.ts` (`getPasswordStatus`, `beginPasswordRegistration`, `answerPasswordRegistration`, `finishPasswordRegistration`, `removePassword`; opslaan en verwijderen vragen step-up `password_set`, passkey, eenmalig, ≤ 300 s op de databaseklok).
+- Browser: `src/lib/auth/opaque-client.ts` (puzzel → OPAQUE → Argon2id in de crypto-worker), `src/lib/auth/opaque-worker.ts`, `src/components/secure/*` (`SecurePasswordInput` met gewone en extra voorzichtige modus, `PasswordSignInPage`, `PasswordSignUpPage`, `PasswordSetPage`), `src/hooks/useSecureWipe.ts`.
+- Pagina's: `/secure/password` (inloggen), `/secure/password/new` (aanmelden), `/secure/password/set` (beheren); routebestanden `src/routes/secure.password.tsx`, `secure.password_.new.tsx`, `secure.password_.set.tsx`. Alleen deze documenten krijgen COOP/COEP/CORP en een eigen CSP (`withSecureDocumentHeaders` in `src/server.ts`). Het inlogscherm is `src/components/imported-pages/AuthNeon.tsx`; accountinstellingen `src/components/imported-pages/AccountSettings.tsx` ("Beheren" → `/secure/password/set`). Er bestaan **geen** `src/lib/auth/auth-server.server.ts` of `src/routes/login.tsx`.
+- Wasm-motor: `wasm/rout-opaque` (opaque-ke 4.0.1 ristretto255, argon2 0.5.3; Argon2id 64 MiB, t = 4, p = 1), pin in `src/lib/crypto-enclave/opaque-wasm-pin.ts`, reproduceerbare build en CI: zie de bijlage "Stap 3 ronde 2".
+- Migratie `db-pending/0270_opaque_password_pow.sql` maakt vier tabellen in `vault_enclave`: **`pake_setups`** (server-setup alleen als RVE1-envelop, soort opk, alleen toevoegen of één keer intrekken), **`pake_registrations`** (192-byte OPAQUE-record per Better Auth-gebruiker, gevonden via een sleutel-digest van het e-mailadres), **`auth_pow_challenges`** (eenmalige Hashcash-uitdagingen, 120 s, 16–26 bits) en **`pake_handshakes`** (verzegelde KE2-toestand, 60 s, één keer op te eisen). Er bestaan **geen** tabellen `opaque_credentials` of `opaque_pow_challenges`. Rollback: `db-pending/0270_opaque_password_pow_rollback.sql` (weigert zolang er registraties zijn).
+- Na de GO voor 0270: bestand naar `db/`, `CODE_SCHEMA_LEVEL` naar 0270, snapshot bijwerken, deze bijlage aanvullen. Voor het eerste wachtwoord moet `ROUT_VAULT_KEK` in de productieomgeving staan (de eerste serversleutel en de OPAQUE-setup worden bij het eerste gebruik gemaakt; Neon heeft nu 0 actieve serversleutels).
+
+**6. Commando's (exact)**
+- Typecheck: `bunx tsgo -b --noEmit` (er is geen script `typecheck` in package.json).
+- Tests: `bunx vitest run` (volledig) of `bunx vitest run <pad>`, bijvoorbeeld `bunx vitest run src/test/opaque-password-0270.test.ts src/lib/crypto-enclave/opaque-engine.test.ts src/lib/crypto-enclave/hashcash.test.ts`. Niet `bun test`: dat is een andere test-runner.
+- Wasm: `wasm/rout-opaque/build.sh --check` (officiële rustup 1.95.0, LLVM 22.1.2).
+- Model: `formal/recovery-v4/run-tlc.sh`.
+- Neon, alleen lezen: `bun scripts/migration-history-check.ts`, `bun scripts/security-definer-check.ts`.
+
+**7. Volgende stappen (nummering van `roadmap.md`)**
+- Stap 3 live: 0270 na GO; daarna een echte inlogtest met een testaccount.
+- Stap 4 veiligheidsschild in de topbalk; Stap 5 FIDO MDS3-attestatie; Stap 6 herstel v4 volgens het model (0268/0269 herschrijven); Stap 7 gasten zonder spoor (pseudoniem per epoch, BBS+, blinde buckets); Stap 8 hybride PQ-ratchet + RVE2; Stap 9 RLS non-interference-model.
+- Al gebouwd, dus geen open stap: herstel 3-van-4 (passkey-PRF, ROUT Card #rk1, server-shard, papieren woorden; herstel v3) en RVE1 met ML-KEM-1024 + X25519.
+- Niet in de roadmap, alleen voorstellen uit het externe dossier: Wesolowski-VDF over de auditlog, Noise_IKpsk2 tussen web en worker, Dudect-timingtests. Pas na een besluit van de eigenaar.
