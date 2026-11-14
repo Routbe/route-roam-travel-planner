@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
-import { isPasskeyAccountCreation, runPasskeyAccountCreation } from "@/lib/auth/account-creation-scope";
+import { isApprovedAccountCreation, isPasskeyAccountCreation, runOpaqueAccountCreation, runPasskeyAccountCreation } from "@/lib/auth/account-creation-scope";
 import { finalizeEnrollment } from "@/lib/auth/passkey-enrollment.server";
 import { signSignupTicket } from "@/lib/auth/signup-ticket";
 
@@ -16,6 +16,15 @@ describe("passkey-only account creation", () => {
   it("is allowed only inside the passkey sign-up scope", async () => {
     expect(await runPasskeyAccountCreation(async () => isPasskeyAccountCreation())).toBe(true);
     expect(isPasskeyAccountCreation()).toBe(false);
+  });
+
+  it("accepts exactly two creation scopes: passkey sign-up and OPAQUE password sign-up", async () => {
+    expect(isApprovedAccountCreation()).toBe(false);
+    expect(await runPasskeyAccountCreation(async () => isApprovedAccountCreation())).toBe(true);
+    expect(await runOpaqueAccountCreation(async () => isApprovedAccountCreation())).toBe(true);
+    // An OPAQUE scope is not a passkey scope (passkey enrollment stays separate).
+    expect(await runOpaqueAccountCreation(async () => isPasskeyAccountCreation())).toBe(false);
+    expect(isApprovedAccountCreation()).toBe(false);
   });
 
   it("creates the account from a verified sign-up ticket inside the passkey scope", async () => {
