@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { enclave } from "@/lib/crypto-enclave/client";
+import { opaqueWorker } from "@/lib/auth/opaque-worker";
 import { OpaqueClientError, signInWithPassword } from "@/lib/auth/opaque-client";
 import { POST_AUTH_PATH, SIGN_IN_PATH } from "@/lib/auth/post-auth";
 import { useSecureWipe } from "@/hooks/useSecureWipe";
@@ -49,15 +49,7 @@ export function PasswordSignInPage({ available }: { available: boolean }) {
     if (!source) return;
     setBusy(true);
     try {
-      const result = await signInWithPassword(address, source, {
-        solve: enclave.pow.solve,
-        loginStart: enclave.opaque.loginStart,
-        loginFinish: enclave.opaque.loginFinish,
-        registerStart: enclave.opaque.registerStart,
-        registerFinish: enclave.opaque.registerFinish,
-        commit: enclave.opaque.commit,
-        discard: enclave.opaque.discard,
-      });
+      const result = await signInWithPassword(address, source, opaqueWorker);
       window.location.assign(result.kind === "second_factor" ? `${SIGN_IN_PATH}?second_factor=1` : POST_AUTH_PATH);
     } catch (e) {
       const code = e instanceof OpaqueClientError ? e.code : "failed";
