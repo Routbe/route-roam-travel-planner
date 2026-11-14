@@ -13,7 +13,6 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listMigrationFiles, planMigrations } from "../../scripts/migration-plan";
 import { definerMigrationViolations } from "../../scripts/security-definer-policy";
-import { CODE_SCHEMA_LEVEL } from "@/lib/schema-version";
 
 const ROOT = join(__dirname, "..", "..");
 const DB_DIR = join(ROOT, "db");
