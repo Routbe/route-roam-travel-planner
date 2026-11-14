@@ -15,16 +15,19 @@ import { AUTH_COOKIE_ATTRIBUTES, configuredAuthOrigin , chooseAuthBaseUrl } from
 import { logServerError } from "@/lib/security/safe-errors";
 import { fediverseSession } from "@/lib/auth/fediverse-session";
 import { recoveryLoginSession } from "@/lib/auth/recovery-login-session";
+import { opaquePasswordAuth } from "@/lib/auth/opaque-password-plugin";
 import { fetchNativeUserInfo, nativeOidcEndpoints } from "@/lib/oauth/native-endpoints";
 
 /**
  * Self-hosted Better Auth — ROUT's own identity layer (System A).
  *
- * Sign-in: passkey (WebAuthn/FIDO2), one-time e-mail link or e-mail + password.
- * With 2FA switched on, password and e-mail-link sign-ins need a second step
- * (authenticator app, SMS, recovery code or passkey); admins must have 2FA on.
- * Configured social providers also sign in existing members on the public portal.
- * New accounts still require the consent/age/passkey registration flow.
+ * Sign-in: passkey (WebAuthn/FIDO2), one-time e-mail link or an OPAQUE password
+ * (RFC 9807, opaque-password-plugin.ts: the password never reaches the server).
+ * Better Auth's own e-mail + password is off. With 2FA switched on, password and
+ * e-mail-link sign-ins need a second step (authenticator app, SMS, recovery code
+ * or passkey); admins must have 2FA on. Configured social providers also sign in
+ * existing members on the public portal. New accounts only through the signed
+ * sign-up ticket (consent/age) plus a first passkey or an OPAQUE password.
  * Data lives in the `neon_auth` schema.
  *
  * Providers are only enabled when their credentials are present, so a missing
@@ -178,6 +181,8 @@ export function createRoutAuth(request?: Request) {
   const plugins: unknown[] = [
     fediverseSession(),
     recoveryLoginSession(),
+    // Password sign-in/sign-up only through OPAQUE + Hashcash (Stap 3, db-pending/0270).
+    opaquePasswordAuth(),
     magicLink({
       expiresIn: 60 * 15,
       // New accounts only through the passkey sign-up (consent + age checks).
@@ -356,14 +361,14 @@ export function createRoutAuth(request?: Request) {
     databaseHooks: {
       user: {
         create: {
-          // Passkey-only registration: refuse every account creation that is not
-          // the verified first-passkey ceremony (passkey-enrollment.server.ts).
+          // Registration only through a verified first passkey or an OPAQUE password
+          // upload, both behind the signed sign-up ticket (account-creation-scope.ts).
           before: async () => {
-            const { isPasskeyAccountCreation, PASSKEY_SIGNUP_REQUIRED } = await import("@/lib/auth/account-creation-scope");
-            if (!isPasskeyAccountCreation()) {
-              console.warn("[auth] refused account creation outside the passkey sign-up");
+            const { isApprovedAccountCreation, PASSKEY_SIGNUP_REQUIRED } = await import("@/lib/auth/account-creation-scope");
+            if (!isApprovedAccountCreation()) {
+              console.warn("[auth] refused account creation outside the passkey or OPAQUE sign-up");
               const { APIError } = await import("better-auth/api");
-              throw new APIError("FORBIDDEN", { code: PASSKEY_SIGNUP_REQUIRED, message: "Nieuwe accounts kunnen alleen met een passkey worden aangemaakt." });
+              throw new APIError("FORBIDDEN", { code: PASSKEY_SIGNUP_REQUIRED, message: "Nieuwe accounts kunnen alleen met een passkey of een beveiligd wachtwoord worden aangemaakt." });
             }
           },
         },
@@ -385,21 +390,9 @@ export function createRoutAuth(request?: Request) {
         },
       },
     },
-    emailAndPassword: {
-      enabled: true,
-      // New accounts only through the passkey sign-up (consent + age checks).
-      disableSignUp: true,
-      minPasswordLength: 12,
-      maxPasswordLength: 128,
-      resetPasswordTokenExpiresIn: 60 * 30,
-      // A reset (or first password) signs out every other device.
-      revokeSessionsOnPasswordReset: true,
-      sendResetPassword: async ({ user, url }: { user: { email: string; name?: string | null }; url: string }) => {
-        if (!(await mayReceiveSignInMail(user.email))) return;
-        const { sendLocalizedEmail, localeFromRequest } = await import("@/lib/email.server");
-        await sendLocalizedEmail({ to: user.email, intent: "password-reset", locale: localeFromRequest(request), payload: { link: url, name: user.name ?? undefined } });
-      },
-    },
+    // Plain e-mail + password stays off: a password exists only as an OPAQUE record
+    // (opaque-password-plugin.ts), so the server never receives it, not even hashed.
+    emailAndPassword: { enabled: false },
     socialProviders: socialProviders as never,
     plugins: plugins as never,
     trustedOrigins: [
