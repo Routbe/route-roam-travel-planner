@@ -5,7 +5,8 @@
  * (action password_set, passkey-only, single use); the vault enclave spends
  * the proof again on the database clock (db-pending/0270
  * store_pake_registration). The e-mail that keys the record is the member's
- * own sign-in address, taken from the session, never from the request.
+ * own Better Auth sign-in address, read server-side, never from the request;
+ * after a primary e-mail change the member sets the password again.
  * Until 0270 is live every function answers `unavailable` and stores nothing.
  */
 import { createServerFn } from "@tanstack/react-start";
@@ -31,9 +32,14 @@ async function failureOf(e: unknown): Promise<{ ok: false; error: Failure }> {
   throw e;
 }
 
-async function memberEmail(user: { email?: string | null }): Promise<string | null> {
+/** The member's Better Auth sign-in address: the one a password sign-in types. */
+async function memberEmail(userId: string): Promise<string | null> {
+  const { sql } = await import("@/lib/neon");
+  const rows = (await sql`select bu.email from public.users u
+    join neon_auth."user" bu on bu.id::text = coalesce(u.auth_user_id::text, u.user_metadata->>'neon_auth_id')
+    where u.id = ${userId} limit 1`) as { email: string | null }[];
   const { normalizeEmail } = await import("./opaque-server.server");
-  return normalizeEmail(user.email ?? null);
+  return normalizeEmail(rows[0]?.email ?? null);
 }
 
 async function hasPasskey(userId: string): Promise<boolean> {
@@ -83,7 +89,7 @@ export const answerPasswordRegistration = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ request: b64u, pow: powAnswer }).strict().parse(d))
   .handler(async ({ data, context }) => {
-    const email = await memberEmail(context.user as { email?: string | null });
+    const email = await memberEmail(context.userId);
     if (!email) return { ok: false as const, error: "no_email" as Failure };
     if (!(await hasPasskey(context.userId))) return { ok: false as const, error: "passkey_required" as Failure };
     const { registerStart } = await import("./opaque-server.server");
@@ -100,7 +106,7 @@ export const finishPasswordRegistration = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ upload: b64u }).strict().parse(d))
   .handler(async ({ data, context }) => {
-    const email = await memberEmail(context.user as { email?: string | null });
+    const email = await memberEmail(context.userId);
     if (!email) return { ok: false as const, error: "no_email" as Failure };
     const s = await import("./opaque-server.server");
     if (!(await s.opaqueAvailable())) return { ok: false as const, error: "unavailable" as Failure };
