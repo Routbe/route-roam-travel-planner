@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { requestStepUp } from "@/components/auth/StepUpDialog";
 import { refreshSessionFreshness } from "@/lib/auth/step-up.functions";
 import { addPasskey, deletePasskey, listPasskeys } from "@/lib/webauthn.functions";
+import { signalSecurityFactorsChanged } from "@/lib/security/shield-events";
 import { deviceLabelFrom } from "@/lib/passkey-label";
 import { passkeyErrorMessage } from "@/lib/passkey-errors";
 
@@ -106,6 +107,7 @@ export function PasskeysPanel() {
         return;
       }
       toast.success(t("auth.settings.passkeys.added"));
+      signalSecurityFactorsChanged();
       await refresh();
     } catch (err) {
       console.error("[passkeys] registration failed", err);
@@ -125,6 +127,7 @@ export function PasskeysPanel() {
       if (!res.ok) throw new Error(t("auth.settings.passkeys.deleteRefused"));
       setKeys((rows) => rows.filter((r) => r.id !== row.id));
       toast.success(t("auth.settings.passkeys.removed"));
+      signalSecurityFactorsChanged();
     } catch (err) {
       console.error("[passkeys] delete failed", err);
       toast.error(describe(err, t("auth.settings.passkeys.removeError")));

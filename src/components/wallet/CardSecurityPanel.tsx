@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { withStepUp } from "@/components/auth/StepUpDialog";
+import { signalSecurityFactorsChanged } from "@/lib/security/shield-events";
 import { blockMyCard, createVaultPass, getMyCardSecurity, lockMyCard, replaceMyCard, setMyCardFrozen, unlockMyCard } from "@/lib/wallet/wallet.functions";
 
 type Sec = Awaited<ReturnType<typeof getMyCardSecurity>>;
@@ -70,17 +71,20 @@ export function CardSecurityPanel({ onChange }: { onChange?: () => void }) {
     const r = await withStepUp(() => block({ data: { reason: "lost" } }), "card_lifecycle");
     if (!r.ok) throw new Error(t("cardSec.blockFailed"));
     toast.success(t("cardSec.blockedToast"));
+    signalSecurityFactorsChanged();
     await refresh(); onChange?.();
   });
   const doFreeze = (frozen: boolean) => run("freeze", async () => {
     await withStepUp(() => freeze({ data: { frozen, space: "root" } }), "card_lifecycle");
     toast.success(frozen ? t("cardSec.frozenToast") : t("cardSec.activeToast"));
+    signalSecurityFactorsChanged();
     await refresh(); onChange?.();
   });
   const doReplace = () => run("replace", async () => {
     const r = await withStepUp(() => replace(), "card_lifecycle");
     if (!r.ok) throw new Error(r.error === "rate_limited" ? t("cardSec.replaceLimit") : r.error === "busy" ? t("cardSec.replaceBusy") : t("cardSec.replaceFailed"));
     toast.success(t("cardSec.replacedToast"));
+    signalSecurityFactorsChanged();
     await refresh(); onChange?.();
   });
   const addGoogle = () => run("google", async () => {

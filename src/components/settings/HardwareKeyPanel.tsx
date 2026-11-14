@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { authClient } from "@/lib/auth-client";
+import { signalSecurityFactorsChanged } from "@/lib/security/shield-events";
 import { requestStepUp } from "@/components/auth/StepUpDialog";
 import { refreshSessionFreshness } from "@/lib/auth/step-up.functions";
 
@@ -35,6 +36,7 @@ export function HardwareKeyPanel() {
       }
       if (res?.error) return toast.error(res.error.message ?? "Sleutel kon niet geregistreerd worden.");
       toast.success("Beveiligingssleutel toegevoegd");
+      signalSecurityFactorsChanged();
       await refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Registratie geannuleerd.");
