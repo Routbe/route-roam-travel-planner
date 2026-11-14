@@ -143,6 +143,7 @@
 - [x] Stap 3 code: OPAQUE + Argon2id (Wasm, vast geheugen) + Hashcash-PoW aangesloten: plugin in Better Auth, gewone wachtwoorden uit, /secure/password (inloggen), /secure/password/new (aanmelden), /secure/password/set (instellen/verwijderen met passkey-step-up), extra voorzichtig typen, wissen na 30 s weg
 - [x] Stap 3 live: 0270 toegepast op Neon (GO eigenaar 2026-11-14 15:55 UTC), bestand in db/, CODE_SCHEMA_LEVEL 0270
 - [ ] Stap 3 eerste inlogtest: wacht op deploy van deze code naar Vercel met ROUT_VAULT_KEK gezet (eerste wachtwoord maakt de server-sleutel en OPAQUE-setup)
+- [ ] Stap 6: 0268/0269 bij herschrijven voor v4 hernummeren boven 0270 (anders kan de health-probe de EXPAND niet bewijzen)
 - [ ] Stap 3 nazorg: /secure/* krijgt bij hosting op Vercel dezelfde headers (nu via src/server.ts); de algemene securityHeaders() worden nergens toegepast (bevinding, niet gewijzigd)
 - [ ] Stap 4: Veiligheidsschild (3 niveaus) in topbalk, NL/EN/FR/DE
 - [ ] Stap 5: FIDO MDS3-attestatie (gesigneerde lijst, periodiek ophalen)
