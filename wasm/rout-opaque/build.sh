@@ -6,12 +6,18 @@
 #   wasm/rout-opaque/build.sh --check  build in a clean target dir and fail
 #                                      unless the SHA-384 equals the pin
 #
-# Reproducible from: rustc 1.95.0 (pinned below), Cargo.lock (--locked),
-# release profile without debug info, no embedded paths. CI runs --check.
+# Reproducible from: the official rustup build of rustc 1.95.0 (commit and
+# LLVM pinned below, selected by rust-toolchain.toml), Cargo.lock (--locked),
+# release profile without debug info, no embedded paths. CI runs --check
+# (.github/workflows/wasm-reproducible.yml). Distribution builds of the same
+# rustc version link a different LLVM and produce different bytes, so they are
+# refused instead of silently producing a module that cannot match the pin.
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(cd ../.. && pwd)"
 RUSTC_PIN="rustc 1.95.0"
+RUSTC_COMMIT_PIN="59807616e1fa2540724bfbac14d7976d7e4a3860"
+LLVM_PIN="22.1.2"
 OUT_DIR="$ROOT/src/lib/crypto-enclave/wasm"
 PIN_FILE="$ROOT/src/lib/crypto-enclave/opaque-wasm-pin.ts"
 
@@ -20,6 +26,14 @@ case "$actual" in
   "$RUSTC_PIN "*) ;;
   *) echo "rustc pin mismatch: want $RUSTC_PIN, have $actual" >&2; exit 2 ;;
 esac
+verbose="$(rustc -vV)"
+commit="$(sed -n 's/^commit-hash: //p' <<<"$verbose")"
+llvm="$(sed -n 's/^LLVM version: //p' <<<"$verbose")"
+if [[ "$commit" != "$RUSTC_COMMIT_PIN" || "$llvm" != "$LLVM_PIN" ]]; then
+  echo "rustc build mismatch: want commit $RUSTC_COMMIT_PIN with LLVM $LLVM_PIN (official rustup 1.95.0), have commit $commit with LLVM $llvm" >&2
+  exit 2
+fi
+echo "toolchain $actual, LLVM $llvm"
 
 TARGET_DIR="$(mktemp -d)"
 trap 'rm -rf "$TARGET_DIR"' EXIT
