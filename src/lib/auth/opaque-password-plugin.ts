@@ -1,6 +1,6 @@
 /**
  * Better Auth plugin: password sign-in and password sign-up with OPAQUE
- * (RFC 9807) behind Hashcash proof-of-work (Stap 3, db-pending/0270).
+ * (RFC 9807) behind Hashcash proof-of-work (Stap 3, db/0270).
  *
  *   POST /opaque/login/pow     { email }                  -> PoW challenge
  *   POST /opaque/login/start   { email, pow, ke1 }        -> { handshake, ke2 }

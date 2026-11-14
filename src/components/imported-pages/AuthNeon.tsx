@@ -96,7 +96,7 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
   const [readiness, setReadiness] = useState<AuthReadiness | null>(initialProviders?.readiness ?? null);
   const [configuredProviders, setConfiguredProviders] = useState<string[]>(initialProviders?.providers ?? []);
   const unavailable = readiness?.ready === false;
-  // Password sign-in exists only once OPAQUE is live (db-pending/0270), never in the admin portal's sign-up.
+  // Password sign-in exists only once OPAQUE is live (db/0270), never in the admin portal's sign-up.
   const passwordAvailable = !unavailable && initialProviders?.password === true;
   const [embedded, setEmbedded] = useState(false);
   useEffect(() => {

@@ -24,7 +24,7 @@
  * vtk and sdm the server vault, vcc only the member's device, mpc only the
  * shard's own factor. Booking blobs (booking-seal.ts, never stored in the
  * vault): bkh only the host's device, bkg only the guest's own link key.
- * The OPAQUE server setup (opk, db-pending/0270) is held only by the server
+ * The OPAQUE server setup (opk, db/0270) is held only by the server
  * vault and is never a vault token. Sealing to, or opening as, any other
  * holder is refused.
  *

@@ -26787,7 +26787,7 @@
         {
           "name": "audit_logs_action_check",
           "kind": "c",
-          "def": "CHECK ((action = ANY (ARRAY['step_up_register'::text, 'token_store'::text, 'token_retrieve'::text, 'server_key_register'::text, 'sdm_card_register'::text, 'sdm_recovery_retrieve'::text, 'sdm_recovery_confirm'::text, 'sdm_fleet_register'::text, 'sdm_batch_register'::text, 'sdm_batch_cards_register'::text, 'sdm_tap_begin'::text, 'sdm_tap_confirm'::text, 'sdm_tap_consume'::text, 'sdm_card_activate'::text, 'sdm_batch_list'::text, 'sdm_batch_export'::text, 'sdm_station_register'::text, 'sdm_station_list'::text, 'sdm_station_retire'::text, 'card_step_up_begin'::text, 'card_step_up_complete'::text, 'card_step_up_claim'::text, 'sdm_card_revoke'::text])))"
+          "def": "CHECK ((action = ANY (ARRAY['step_up_register'::text, 'token_store'::text, 'token_retrieve'::text, 'server_key_register'::text, 'sdm_card_register'::text, 'sdm_recovery_retrieve'::text, 'sdm_recovery_confirm'::text, 'sdm_fleet_register'::text, 'sdm_batch_register'::text, 'sdm_batch_cards_register'::text, 'sdm_tap_begin'::text, 'sdm_tap_confirm'::text, 'sdm_tap_consume'::text, 'sdm_card_activate'::text, 'sdm_batch_list'::text, 'sdm_batch_export'::text, 'sdm_station_register'::text, 'sdm_station_list'::text, 'sdm_station_retire'::text, 'card_step_up_begin'::text, 'card_step_up_complete'::text, 'card_step_up_claim'::text, 'sdm_card_revoke'::text, 'pake_setup_register'::text, 'pake_register'::text, 'pake_signup_register'::text, 'pake_unregister'::text, 'pake_login'::text])))"
         },
         {
           "name": "audit_logs_entry_hash_key",
@@ -26834,6 +26834,117 @@
           "check": "false"
         }
       ],
+      "grants": {}
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "auth_pow_challenges",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "notNull": true,
+          "default": "gen_random_uuid()",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "challenge",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "purpose",
+          "type": "text",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "scope_digest",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "bits",
+          "type": "smallint",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "issued_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "spent_at",
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "auth_pow_bits",
+          "kind": "c",
+          "def": "CHECK (((bits >= 16) AND (bits <= 26)))"
+        },
+        {
+          "name": "auth_pow_challenge_len",
+          "kind": "c",
+          "def": "CHECK ((octet_length(challenge) = 32))"
+        },
+        {
+          "name": "auth_pow_challenges_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "auth_pow_purpose",
+          "kind": "c",
+          "def": "CHECK ((purpose = ANY (ARRAY['opaque_login'::text, 'opaque_signup'::text, 'opaque_register'::text])))"
+        },
+        {
+          "name": "auth_pow_scope_len",
+          "kind": "c",
+          "def": "CHECK ((octet_length(scope_digest) = 32))"
+        },
+        {
+          "name": "auth_pow_ttl",
+          "kind": "c",
+          "def": "CHECK (((expires_at > issued_at) AND (expires_at <= (issued_at + '00:02:00'::interval))))"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX auth_pow_issued_idx ON vault_enclave.auth_pow_challenges USING btree (issued_at)",
+        "CREATE INDEX auth_pow_scope_idx ON vault_enclave.auth_pow_challenges USING btree (scope_digest, issued_at)"
+      ],
+      "triggers": [],
+      "rls": true,
+      "forceRls": false,
+      "policies": [],
       "grants": {}
     },
     {
@@ -27052,6 +27163,298 @@
           "check": "false"
         }
       ],
+      "grants": {}
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_handshakes",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "lookup_digest",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "state_sealed",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "claimed_at",
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "pake_handshakes_lookup_len",
+          "kind": "c",
+          "def": "CHECK ((octet_length(lookup_digest) = 32))"
+        },
+        {
+          "name": "pake_handshakes_outcome",
+          "kind": "c",
+          "def": "CHECK ((outcome = ANY (ARRAY['granted'::text, 'denied'::text])))"
+        },
+        {
+          "name": "pake_handshakes_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (id)"
+        },
+        {
+          "name": "pake_handshakes_state_len",
+          "kind": "c",
+          "def": "CHECK (((octet_length(state_sealed) >= 41) AND (octet_length(state_sealed) <= 600)))"
+        },
+        {
+          "name": "pake_handshakes_ttl",
+          "kind": "c",
+          "def": "CHECK (((expires_at > created_at) AND (expires_at <= (created_at + '00:01:00'::interval))))"
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX pake_handshakes_created_idx ON vault_enclave.pake_handshakes USING btree (created_at)",
+        "CREATE INDEX pake_handshakes_lookup_idx ON vault_enclave.pake_handshakes USING btree (lookup_digest, created_at)"
+      ],
+      "triggers": [],
+      "rls": true,
+      "forceRls": false,
+      "policies": [],
+      "grants": {}
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_registrations",
+      "columns": [
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "lookup_digest",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "credential_id",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "record",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "setup_kid",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "version",
+          "type": "integer",
+          "notNull": true,
+          "default": "1",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "clock_timestamp()",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "clock_timestamp()",
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "pake_registrations_auth_user_id_fkey",
+          "kind": "f",
+          "def": "FOREIGN KEY (auth_user_id) REFERENCES neon_auth.\"user\"(id) ON DELETE CASCADE"
+        },
+        {
+          "name": "pake_registrations_credential_id_key",
+          "kind": "u",
+          "def": "UNIQUE (credential_id)"
+        },
+        {
+          "name": "pake_registrations_credential_len",
+          "kind": "c",
+          "def": "CHECK ((octet_length(credential_id) = 32))"
+        },
+        {
+          "name": "pake_registrations_lookup_digest_key",
+          "kind": "u",
+          "def": "UNIQUE (lookup_digest)"
+        },
+        {
+          "name": "pake_registrations_lookup_len",
+          "kind": "c",
+          "def": "CHECK ((octet_length(lookup_digest) = 32))"
+        },
+        {
+          "name": "pake_registrations_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (auth_user_id)"
+        },
+        {
+          "name": "pake_registrations_record_len",
+          "kind": "c",
+          "def": "CHECK ((octet_length(record) = 192))"
+        },
+        {
+          "name": "pake_registrations_setup_kid_fkey",
+          "kind": "f",
+          "def": "FOREIGN KEY (setup_kid) REFERENCES vault_enclave.pake_setups(kid)"
+        },
+        {
+          "name": "pake_registrations_version",
+          "kind": "c",
+          "def": "CHECK ((version >= 1))"
+        }
+      ],
+      "indexes": [],
+      "triggers": [],
+      "rls": true,
+      "forceRls": false,
+      "policies": [],
+      "grants": {}
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_setups",
+      "columns": [
+        {
+          "name": "kid",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "envelope",
+          "type": "bytea",
+          "notNull": true,
+          "default": null,
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "clock_timestamp()",
+          "identity": null,
+          "generated": null
+        },
+        {
+          "name": "retired_at",
+          "type": "timestamp with time zone",
+          "notNull": false,
+          "default": null,
+          "identity": null,
+          "generated": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "pake_setups_envelope_header",
+          "kind": "c",
+          "def": "CHECK (((SUBSTRING(envelope FROM 1 FOR 4) = '\\x52564531'::bytea) AND (get_byte(envelope, 4) = 1) AND (get_byte(envelope, 5) = 7) AND (get_byte(envelope, 6) = 1)))"
+        },
+        {
+          "name": "pake_setups_envelope_len",
+          "kind": "c",
+          "def": "CHECK (((octet_length(envelope) >= 1664) AND (octet_length(envelope) <= 2304)))"
+        },
+        {
+          "name": "pake_setups_kid_matches",
+          "kind": "c",
+          "def": "CHECK ((kid = SUBSTRING(sha256((convert_to('rout.pake.setup-kid'::text, 'UTF8'::name) || envelope)) FROM 1 FOR 16)))"
+        },
+        {
+          "name": "pake_setups_pkey",
+          "kind": "p",
+          "def": "PRIMARY KEY (kid)"
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX pake_setups_one_active ON vault_enclave.pake_setups USING btree ((true)) WHERE (retired_at IS NULL)"
+      ],
+      "triggers": [
+        "CREATE TRIGGER pake_setups_guard BEFORE DELETE OR UPDATE ON vault_enclave.pake_setups FOR EACH ROW EXECUTE FUNCTION vault_enclave.pake_setups_guard()",
+        "CREATE TRIGGER pake_setups_no_truncate BEFORE TRUNCATE ON vault_enclave.pake_setups FOR EACH STATEMENT EXECUTE FUNCTION vault_enclave.audit_logs_immutable()"
+      ],
+      "rls": true,
+      "forceRls": false,
+      "policies": [],
       "grants": {}
     },
     {
@@ -30479,6 +30882,18 @@
     },
     {
       "schema": "vault_enclave",
+      "name": "auth_pow_consume",
+      "args": "p_id uuid, p_nonce bytea, p_purpose text, p_scope_digest bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.auth_pow_consume(p_id uuid, p_nonce bytea, p_purpose text, p_scope_digest bytea)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_now timestamptz := pg_catalog.clock_timestamp();\n  v_row vault_enclave.auth_pow_challenges%rowtype;\nbegin\n  select * into v_row from vault_enclave.auth_pow_challenges c where c.id = p_id for update;\n  if not found or v_row.spent_at is not null then return false; end if;\n  update vault_enclave.auth_pow_challenges set spent_at = v_now where auth_pow_challenges.id = p_id;\n  if v_row.expires_at < v_now or v_row.purpose is distinct from p_purpose\n     or v_row.scope_digest is distinct from p_scope_digest\n     or p_nonce is null or octet_length(p_nonce) <> 8 then\n    return false;\n  end if;\n  return vault_enclave.pow_leading_zero_bits(\n    pg_catalog.sha256(pg_catalog.convert_to('rout.pow.v1', 'UTF8') || v_row.challenge || p_nonce)) >= v_row.bits;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "auth_pow_issue",
+      "args": "p_purpose text, p_scope_digest bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.auth_pow_issue(p_purpose text, p_scope_digest bytea)\n RETURNS TABLE(id uuid, challenge bytea, bits integer, expires_at timestamp with time zone)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_now timestamptz := pg_catalog.clock_timestamp();\n  v_fail integer;\n  v_scope integer;\n  v_global integer;\n  v_bits integer;\n  v_id uuid;\n  v_challenge bytea := public.gen_random_bytes(32);\nbegin\n  if p_purpose not in ('opaque_login', 'opaque_signup', 'opaque_register')\n     or p_scope_digest is null or octet_length(p_scope_digest) <> 32 then\n    return;\n  end if;\n  -- Keep both tables small; bounded per call.\n  delete from vault_enclave.auth_pow_challenges c\n   where c.ctid in (select c2.ctid from vault_enclave.auth_pow_challenges c2\n                     where c2.expires_at < v_now - interval '1 hour' limit 500);\n  delete from vault_enclave.pake_handshakes h\n   where h.ctid in (select h2.ctid from vault_enclave.pake_handshakes h2\n                     where h2.created_at < v_now - interval '1 hour' limit 500);\n  v_fail := vault_enclave.pake_recent_failures(p_scope_digest);\n  select pg_catalog.count(*)::integer into v_scope from vault_enclave.auth_pow_challenges c\n   where c.scope_digest = p_scope_digest and c.issued_at > v_now - interval '15 minutes';\n  select pg_catalog.count(*)::integer into v_global from vault_enclave.auth_pow_challenges c\n   where c.issued_at > v_now - interval '60 seconds';\n  -- Nobody is blocked: work only gets more expensive (about 65 thousand to 67 million hashes).\n  v_bits := least(26, 16 + least(v_fail, 6)\n              + case when v_scope > 20 then 2 when v_scope > 5 then 1 else 0 end\n              + case when v_global > 600 then 2 when v_global > 120 then 1 else 0 end);\n  insert into vault_enclave.auth_pow_challenges (challenge, purpose, scope_digest, bits, issued_at, expires_at)\n  values (v_challenge, p_purpose, p_scope_digest, v_bits, v_now, v_now + interval '120 seconds')\n  returning auth_pow_challenges.id into v_id;\n  return query select v_id, v_challenge, v_bits, v_now + interval '120 seconds';\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
       "name": "begin_card_step_up",
       "args": "p_scope text",
       "def": "CREATE OR REPLACE FUNCTION vault_enclave.begin_card_step_up(p_scope text)\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_now timestamptz := pg_catalog.clock_timestamp();\n  v_caller uuid := vault_enclave.caller_user_id();\n  v_ref text;\nbegin\n  if v_caller is null then\n    perform vault_enclave.append_audit(null, 'card_step_up_begin', 'denied', 'no_caller', null); return null;\n  end if;\n  if p_scope is null or p_scope not in ('*', 'card_reveal', 'card_lifecycle') then\n    perform vault_enclave.append_audit(v_caller, 'card_step_up_begin', 'denied', 'bad_request', null); return null;\n  end if;\n  if not exists (select 1 from vault_enclave.sdm_batch_cards c\n                  where c.owner_user_id = v_caller and c.activated_at is not null and c.revoked_at is null) then\n    perform vault_enclave.append_audit(v_caller, 'card_step_up_begin', 'denied', 'no_card', null); return null;\n  end if;\n  update vault_enclave.card_step_up_intents set expires_at = v_now\n   where user_id = v_caller and completed_at is null and expires_at > v_now;\n  v_ref := 'csu_' || pg_catalog.encode(public.gen_random_bytes(32), 'hex');\n  insert into vault_enclave.card_step_up_intents (intent_digest, user_id, scope, created_at, expires_at)\n  values (pg_catalog.sha256(pg_catalog.convert_to(v_ref, 'UTF8')), v_caller, p_scope, v_now, v_now + interval '300 seconds');\n  perform vault_enclave.append_audit(v_caller, 'card_step_up_begin', 'granted', p_scope, null);\n  return v_ref;\nend $function$"
@@ -30557,9 +30972,81 @@
     },
     {
       "schema": "vault_enclave",
+      "name": "pake_login_begin",
+      "args": "p_id uuid, p_lookup bytea, p_state_sealed bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_login_begin(p_id uuid, p_lookup bytea, p_state_sealed bytea)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_now timestamptz := pg_catalog.clock_timestamp();\n  v_rows integer;\nbegin\n  if p_id is null or p_lookup is null or octet_length(p_lookup) <> 32 then return false; end if;\n  if (select pg_catalog.count(*) from vault_enclave.pake_handshakes h\n       where h.lookup_digest = p_lookup and h.claimed_at is null and h.expires_at > v_now) >= 5 then\n    return false;\n  end if;\n  insert into vault_enclave.pake_handshakes (id, lookup_digest, state_sealed, created_at, expires_at)\n  values (p_id, p_lookup, p_state_sealed, v_now, v_now + interval '60 seconds')\n  on conflict do nothing;\n  get diagnostics v_rows = row_count;\n  return v_rows = 1;\nexception when check_violation then\n  return false;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_login_claim",
+      "args": "p_id uuid",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_login_claim(p_id uuid)\n RETURNS TABLE(lookup_digest bytea, state_sealed bytea)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_now timestamptz := pg_catalog.clock_timestamp();\n  v_row vault_enclave.pake_handshakes%rowtype;\nbegin\n  select * into v_row from vault_enclave.pake_handshakes h where h.id = p_id for update;\n  if not found or v_row.claimed_at is not null then return; end if;\n  update vault_enclave.pake_handshakes set claimed_at = v_now, outcome = 'denied' where pake_handshakes.id = p_id;\n  if v_row.expires_at < v_now then return; end if;\n  return query select v_row.lookup_digest, v_row.state_sealed;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_login_denied",
+      "args": "p_id uuid",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_login_denied(p_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\nbegin\n  if exists (select 1 from vault_enclave.pake_handshakes h where h.id = p_id and h.outcome = 'denied') then\n    perform vault_enclave.append_audit(null, 'pake_login', 'denied', 'bad_proof', null);\n  end if;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_login_granted",
+      "args": "p_id uuid",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_login_granted(p_id uuid)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_now timestamptz := pg_catalog.clock_timestamp();\n  v_row vault_enclave.pake_handshakes%rowtype;\n  v_auth uuid;\nbegin\n  select * into v_row from vault_enclave.pake_handshakes h where h.id = p_id for update;\n  if not found or v_row.claimed_at is null or v_row.outcome is distinct from 'denied'\n     or v_now - v_row.claimed_at > interval '30 seconds' then\n    return null;\n  end if;\n  select r.auth_user_id into v_auth from vault_enclave.pake_registrations r where r.lookup_digest = v_row.lookup_digest;\n  if v_auth is null then\n    perform vault_enclave.append_audit(null, 'pake_login', 'denied', 'no_registration', null); return null;\n  end if;\n  update vault_enclave.pake_handshakes set outcome = 'granted' where pake_handshakes.id = p_id;\n  perform vault_enclave.append_audit(v_auth, 'pake_login', 'granted', 'ok', null);\n  return v_auth;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_recent_failures",
+      "args": "p_lookup bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_recent_failures(p_lookup bytea)\n RETURNS integer\n LANGUAGE sql\n STABLE\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\n  select pg_catalog.count(*)::integer from vault_enclave.pake_handshakes h\n   where h.lookup_digest = p_lookup\n     and h.created_at > pg_catalog.clock_timestamp() - interval '15 minutes'\n     and h.outcome is distinct from 'granted'\n     and (h.outcome = 'denied' or h.expires_at < pg_catalog.clock_timestamp())\n$function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_registered",
+      "args": "p_auth_user_id uuid",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_registered(p_auth_user_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\n  select exists (select 1 from vault_enclave.pake_registrations r where r.auth_user_id = p_auth_user_id)\n$function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_registration_for_login",
+      "args": "p_lookup bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_registration_for_login(p_lookup bytea)\n RETURNS TABLE(credential_id bytea, record bytea, setup_kid bytea)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\n  select r.credential_id, r.record, r.setup_kid from vault_enclave.pake_registrations r where r.lookup_digest = p_lookup\n$function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_setup_active",
+      "args": "",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_setup_active()\n RETURNS TABLE(kid bytea, envelope bytea)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\n  select s.kid, s.envelope from vault_enclave.pake_setups s where s.retired_at is null\n$function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_setup_get",
+      "args": "p_kid bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_setup_get(p_kid bytea)\n RETURNS TABLE(kid bytea, envelope bytea)\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\n  select s.kid, s.envelope from vault_enclave.pake_setups s where s.kid = p_kid\n$function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pake_setups_guard",
+      "args": "",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pake_setups_guard()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\nbegin\n  if tg_op = 'DELETE' then raise exception 'vault_enclave.pake_setups is append-only'; end if;\n  if old.retired_at is not null or new.retired_at is null\n     or (new.kid, new.envelope, new.created_at) is distinct from (old.kid, old.envelope, old.created_at) then\n    raise exception 'vault_enclave.pake_setups rows can only be retired once';\n  end if;\n  return new;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
       "name": "pending_card_step_up",
       "args": "",
       "def": "CREATE OR REPLACE FUNCTION vault_enclave.pending_card_step_up()\n RETURNS boolean\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare v_caller uuid := vault_enclave.caller_user_id();\nbegin\n  if v_caller is null then return false; end if;\n  return exists (select 1 from vault_enclave.card_step_up_intents i\n                  where i.user_id = v_caller and i.completed_at is null and i.expires_at > pg_catalog.clock_timestamp());\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "pow_leading_zero_bits",
+      "args": "p bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.pow_leading_zero_bits(p bytea)\n RETURNS integer\n LANGUAGE plpgsql\n IMMUTABLE STRICT\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  i integer;\n  b integer;\n  n integer := 0;\nbegin\n  for i in 0 .. pg_catalog.octet_length(p) - 1 loop\n    b := pg_catalog.get_byte(p, i);\n    if b = 0 then n := n + 8; continue; end if;\n    while b < 128 loop b := b * 2; n := n + 1; end loop;\n    return n;\n  end loop;\n  return n;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "register_pake_setup",
+      "args": "p_kid bytea, p_envelope bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.register_pake_setup(p_kid bytea, p_envelope bytea)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_caller uuid := vault_enclave.caller_user_id();\n  v_rows integer;\nbegin\n  if v_caller is null then\n    perform vault_enclave.append_audit(null, 'pake_setup_register', 'denied', 'no_caller', null); return false;\n  end if;\n  if p_envelope is null or octet_length(p_envelope) < 1664 or not exists (\n       select 1 from vault_enclave.server_keys k\n        where k.retired_at is null and k.kid = substring(p_envelope from 8 for 16)) then\n    perform vault_enclave.append_audit(v_caller, 'pake_setup_register', 'denied', 'not_sealed_to_active_key', null); return false;\n  end if;\n  begin\n    insert into vault_enclave.pake_setups (kid, envelope) values (p_kid, p_envelope) on conflict do nothing;\n    get diagnostics v_rows = row_count;\n  exception when check_violation then\n    perform vault_enclave.append_audit(v_caller, 'pake_setup_register', 'denied', 'malformed', null); return false;\n  end;\n  if v_rows = 0 then\n    perform vault_enclave.append_audit(v_caller, 'pake_setup_register', 'denied', 'already_active', null); return false;\n  end if;\n  perform vault_enclave.append_audit(v_caller, 'pake_setup_register', 'granted', 'ok', null);\n  return true;\nend $function$"
     },
     {
       "schema": "vault_enclave",
@@ -30602,6 +31089,12 @@
       "name": "register_step_up_proof",
       "args": "p_proof_id uuid, p_method text",
       "def": "CREATE OR REPLACE FUNCTION vault_enclave.register_step_up_proof(p_proof_id uuid, p_method text)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare v_caller uuid := vault_enclave.caller_user_id();\nbegin\n  if v_caller is null then\n    perform vault_enclave.append_audit(null, 'step_up_register', 'denied', 'no_caller', null); return false;\n  end if;\n  if p_method is distinct from 'passkey' then\n    perform vault_enclave.append_audit(v_caller, 'step_up_register', 'denied', 'method_not_passkey', null); return false;\n  end if;\n  if p_proof_id is null or exists (select 1 from vault_enclave.step_up_proofs s where s.proof_id = p_proof_id) then\n    perform vault_enclave.append_audit(v_caller, 'step_up_register', 'denied', 'proof_reused', null); return false;\n  end if;\n  -- Spent and stale proofs are useless after 300 s; keep the table small.\n  delete from vault_enclave.step_up_proofs s where s.verified_at < pg_catalog.clock_timestamp() - interval '1 hour';\n  insert into vault_enclave.step_up_proofs (proof_id, user_id, method, verified_at)\n  values (p_proof_id, v_caller, 'passkey', pg_catalog.clock_timestamp());\n  perform vault_enclave.append_audit(v_caller, 'step_up_register', 'granted', 'ok', null);\n  return true;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "remove_pake_registration",
+      "args": "p_step_up_proof_id uuid",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.remove_pake_registration(p_step_up_proof_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_caller uuid := vault_enclave.caller_user_id();\n  v_now timestamptz := pg_catalog.clock_timestamp();\n  v_auth uuid;\n  v_rows integer;\n  v_proof vault_enclave.step_up_proofs%rowtype;\nbegin\n  if v_caller is null then\n    perform vault_enclave.append_audit(null, 'pake_unregister', 'denied', 'no_caller', null); return false;\n  end if;\n  select u.auth_user_id into v_auth from public.users u where u.id = v_caller;\n  select * into v_proof from vault_enclave.step_up_proofs s\n   where s.proof_id = p_step_up_proof_id and s.user_id = v_caller for update;\n  if not found or v_proof.consumed_at is not null or v_proof.method <> 'passkey'\n     or v_now - v_proof.verified_at > interval '300 seconds' or v_proof.verified_at > v_now + interval '5 seconds' then\n    perform vault_enclave.append_audit(v_caller, 'pake_unregister', 'denied', 'step_up_missing', null); return false;\n  end if;\n  update vault_enclave.step_up_proofs set consumed_at = v_now where proof_id = v_proof.proof_id;\n  if v_auth is null or not exists (select 1 from neon_auth.passkey k where k.\"userId\" = v_auth::text) then\n    perform vault_enclave.append_audit(v_caller, 'pake_unregister', 'denied', 'last_sign_in_method', null); return false;\n  end if;\n  delete from vault_enclave.pake_registrations r where r.auth_user_id = v_auth;\n  get diagnostics v_rows = row_count;\n  perform vault_enclave.append_audit(v_caller, 'pake_unregister', case when v_rows > 0 then 'granted' else 'denied' end,\n                                     case when v_rows > 0 then 'ok' else 'none' end, null);\n  return v_rows > 0;\nend $function$"
     },
     {
       "schema": "vault_enclave",
@@ -30668,6 +31161,18 @@
       "name": "store_opaque_token",
       "args": "p_token_type text, p_encrypted_payload bytea",
       "def": "CREATE OR REPLACE FUNCTION vault_enclave.store_opaque_token(p_token_type text, p_encrypted_payload bytea)\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_caller uuid := vault_enclave.caller_user_id();\n  v_ref text;\nbegin\n  if v_caller is null then\n    perform vault_enclave.append_audit(null, 'token_store', 'denied', 'no_caller', null); return null;\n  end if;\n  if p_token_type is null or p_token_type not in ('vtk', 'vcc', 'mpc', 'sdm') then\n    perform vault_enclave.append_audit(v_caller, 'token_store', 'denied', 'bad_type', null); return null;\n  end if;\n  if p_encrypted_payload is null or octet_length(p_encrypted_payload) not between 1600 and 65536\n     or substring(p_encrypted_payload from 1 for 4) <> '\\x52564531'::bytea then\n    perform vault_enclave.append_audit(v_caller, 'token_store', 'denied', 'not_an_envelope', null); return null;\n  end if;\n  if not exists (select 1 from public.users u where u.id = v_caller) then\n    perform vault_enclave.append_audit(v_caller, 'token_store', 'denied', 'unknown_member', null); return null;\n  end if;\n  -- 256 random bits from the database's CSPRNG; the caller never chooses a ref.\n  v_ref := p_token_type || '_' || pg_catalog.encode(public.gen_random_bytes(32), 'hex');\n  insert into vault_enclave.opaque_tokens (token_ref, token_type, owner_user_id, encrypted_payload)\n  values (v_ref, p_token_type, v_caller, p_encrypted_payload);\n  perform vault_enclave.append_audit(v_caller, 'token_store', 'granted', 'ok', v_ref);\n  return v_ref;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "store_pake_registration",
+      "args": "p_lookup bytea, p_credential_id bytea, p_record bytea, p_setup_kid bytea, p_step_up_proof_id uuid",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.store_pake_registration(p_lookup bytea, p_credential_id bytea, p_record bytea, p_setup_kid bytea, p_step_up_proof_id uuid)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_caller uuid := vault_enclave.caller_user_id();\n  v_now timestamptz := pg_catalog.clock_timestamp();\n  v_auth uuid;\n  v_proof vault_enclave.step_up_proofs%rowtype;\nbegin\n  if v_caller is null then\n    perform vault_enclave.append_audit(null, 'pake_register', 'denied', 'no_caller', null); return false;\n  end if;\n  select u.auth_user_id into v_auth from public.users u where u.id = v_caller;\n  if v_auth is null or not exists (select 1 from neon_auth.\"user\" au where au.id = v_auth) then\n    perform vault_enclave.append_audit(v_caller, 'pake_register', 'denied', 'no_identity', null); return false;\n  end if;\n  select * into v_proof from vault_enclave.step_up_proofs s\n   where s.proof_id = p_step_up_proof_id and s.user_id = v_caller for update;\n  if not found or v_proof.consumed_at is not null or v_proof.method <> 'passkey'\n     or v_now - v_proof.verified_at > interval '300 seconds' or v_proof.verified_at > v_now + interval '5 seconds' then\n    perform vault_enclave.append_audit(v_caller, 'pake_register', 'denied', 'step_up_missing', null); return false;\n  end if;\n  update vault_enclave.step_up_proofs set consumed_at = v_now where proof_id = v_proof.proof_id;\n  if not exists (select 1 from vault_enclave.pake_setups s where s.kid = p_setup_kid and s.retired_at is null) then\n    perform vault_enclave.append_audit(v_caller, 'pake_register', 'denied', 'setup_not_active', null); return false;\n  end if;\n  begin\n    insert into vault_enclave.pake_registrations as r (auth_user_id, lookup_digest, credential_id, record, setup_kid)\n    values (v_auth, p_lookup, p_credential_id, p_record, p_setup_kid)\n    on conflict (auth_user_id) do update\n      set lookup_digest = excluded.lookup_digest, credential_id = excluded.credential_id,\n          record = excluded.record, setup_kid = excluded.setup_kid,\n          version = r.version + 1, updated_at = v_now;\n  exception when check_violation or unique_violation then\n    perform vault_enclave.append_audit(v_caller, 'pake_register', 'denied', 'malformed_or_taken', null); return false;\n  end;\n  perform vault_enclave.append_audit(v_caller, 'pake_register', 'granted', 'ok', null);\n  return true;\nend $function$"
+    },
+    {
+      "schema": "vault_enclave",
+      "name": "store_pake_signup_registration",
+      "args": "p_lookup bytea, p_credential_id bytea, p_record bytea, p_setup_kid bytea",
+      "def": "CREATE OR REPLACE FUNCTION vault_enclave.store_pake_signup_registration(p_lookup bytea, p_credential_id bytea, p_record bytea, p_setup_kid bytea)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\ndeclare\n  v_caller uuid := vault_enclave.caller_user_id();\n  v_created timestamptz;\nbegin\n  if v_caller is null then\n    perform vault_enclave.append_audit(null, 'pake_signup_register', 'denied', 'no_caller', null); return false;\n  end if;\n  select au.\"createdAt\" into v_created from neon_auth.\"user\" au where au.id = v_caller for update;\n  if v_created is null or v_created < pg_catalog.clock_timestamp() - interval '15 minutes'\n     or exists (select 1 from neon_auth.passkey k where k.\"userId\" = v_caller::text)\n     or exists (select 1 from public.users u where u.auth_user_id = v_caller or u.id = v_caller)\n     or exists (select 1 from vault_enclave.pake_registrations r where r.auth_user_id = v_caller) then\n    perform vault_enclave.append_audit(v_caller, 'pake_signup_register', 'denied', 'not_a_fresh_identity', null); return false;\n  end if;\n  if not exists (select 1 from vault_enclave.pake_setups s where s.kid = p_setup_kid and s.retired_at is null) then\n    perform vault_enclave.append_audit(v_caller, 'pake_signup_register', 'denied', 'setup_not_active', null); return false;\n  end if;\n  begin\n    insert into vault_enclave.pake_registrations (auth_user_id, lookup_digest, credential_id, record, setup_kid)\n    values (v_caller, p_lookup, p_credential_id, p_record, p_setup_kid);\n  exception when check_violation or unique_violation then\n    perform vault_enclave.append_audit(v_caller, 'pake_signup_register', 'denied', 'malformed_or_taken', null); return false;\n  end;\n  perform vault_enclave.append_audit(v_caller, 'pake_signup_register', 'granted', 'ok', null);\n  return true;\nend $function$"
     },
     {
       "schema": "vault_enclave",

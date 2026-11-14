@@ -133,7 +133,7 @@ export async function openServerToken(userId: string, ref: OpaqueToken<"vtk">, p
 export const PAKE_SETUP_CONTEXT = "rout.pake.setup.v1";
 const SETUP_KID_LABEL = new TextEncoder().encode("rout.pake.setup-kid");
 
-/** Same derivation as the db-pending/0270 check: SHA-256(label || envelope)[0..16). */
+/** Same derivation as the db/0270 check: SHA-256(label || envelope)[0..16). */
 export async function pakeSetupKid(envelope: Uint8Array): Promise<Uint8Array> {
   const { sha256 } = await import("@noble/hashes/sha2.js");
   const input = new Uint8Array(SETUP_KID_LABEL.length + envelope.length);

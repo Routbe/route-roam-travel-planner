@@ -83,7 +83,7 @@ export type SdmBatchExport = {
   readonly fleetEnvelope: Uint8Array;
 };
 
-/** OPAQUE server setup as stored (db-pending/0270): RVE1 kind opk, sealed to a server key. */
+/** OPAQUE server setup as stored (db/0270): RVE1 kind opk, sealed to a server key. */
 export type PakeSetupEnvelope = { readonly kid: Uint8Array; readonly envelope: Uint8Array };
 /** One OPAQUE registration record (192 bytes) and the identifiers it was made under. */
 export type PakeRegistration = { readonly credentialId: Uint8Array; readonly record: Uint8Array; readonly setupKid: Uint8Array };
@@ -94,7 +94,7 @@ export type AuthPowPurpose = (typeof AUTH_POW_PURPOSES)[number];
 export type AuthPowChallenge = { readonly id: string; readonly challenge: Uint8Array; readonly bits: number; readonly expiresAt: string };
 
 export interface IVaultPort {
-  /** Whether the OPAQUE schema (db-pending/0270) is live. */
+  /** Whether the OPAQUE schema (db/0270) is live. */
   pakeAvailable(): Promise<boolean>;
   /** The active OPAQUE setup envelope (anonymous: needed before sign-in). */
   activePakeSetup(): Promise<PakeSetupEnvelope | null>;

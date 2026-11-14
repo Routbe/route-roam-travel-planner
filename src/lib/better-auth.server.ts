@@ -181,7 +181,7 @@ export function createRoutAuth(request?: Request) {
   const plugins: unknown[] = [
     fediverseSession(),
     recoveryLoginSession(),
-    // Password sign-in/sign-up only through OPAQUE + Hashcash (Stap 3, db-pending/0270).
+    // Password sign-in/sign-up only through OPAQUE + Hashcash (Stap 3, db/0270).
     opaquePasswordAuth(),
     magicLink({
       expiresIn: 60 * 15,
