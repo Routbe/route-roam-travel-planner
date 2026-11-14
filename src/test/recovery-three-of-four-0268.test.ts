@@ -13,7 +13,6 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listMigrationFiles, planMigrations } from "../../scripts/migration-plan";
 import { definerMigrationViolations } from "../../scripts/security-definer-policy";
-import { CODE_SCHEMA_LEVEL } from "@/lib/schema-version";
 
 const ROOT = join(__dirname, "..", "..");
 const DB_DIR = join(ROOT, "db");
@@ -68,8 +67,10 @@ afterAll(async () => {
 });
 
 describe("0268/0269: recovery vault 3-of-4", () => {
-  it("both files stay held back: the code level is unchanged and they pass the SECURITY DEFINER lint", () => {
-    expect(Number(CODE_SCHEMA_LEVEL)).toBeLessThan(268);
+  // 0270 went live before these (2026-11-14), so CODE_SCHEMA_LEVEL is already above 0268:
+  // "held back" now means "not in db/". Rewritten for recovery v4 they get numbers above 0270.
+  it("both files stay held back: neither is in db/ and they pass the SECURITY DEFINER lint", () => {
+    expect(listMigrationFiles(DB_DIR).filter((f) => /^026[89]_/.test(f))).toEqual([]);
     expect(definerMigrationViolations(SQL_0268, 268)).toEqual([]);
     expect(definerMigrationViolations(SQL_0269, 269)).toEqual([]);
   });

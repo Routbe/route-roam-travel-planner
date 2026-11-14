@@ -3,7 +3,7 @@
  * The password never reaches these functions, only OPAQUE messages and a
  * Hashcash answer. Storing or removing needs a fresh passkey step-up
  * (action password_set, passkey-only, single use); the vault enclave spends
- * the proof again on the database clock (db-pending/0270
+ * the proof again on the database clock (db/0270
  * store_pake_registration). The e-mail that keys the record is the member's
  * own Better Auth sign-in address, read server-side, never from the request;
  * after a primary e-mail change the member sets the password again.

@@ -102,7 +102,7 @@ async function bridgeAs(identity: RoutIdentity, authId: string, memberId: string
     }
   } else {
     // A first-time member row is created only for an identity that already owns a
-    // passkey (passkey sign-up) or an OPAQUE password record (password sign-up, db-pending/0270).
+    // passkey (passkey sign-up) or an OPAQUE password record (password sign-up, db/0270).
     const passkeys = (await sql`
       select 1 from neon_auth.passkey where "userId"::text = ${authId} limit 1
     `) as Row[];

@@ -5,7 +5,7 @@
  *   valid  = digest starts with `bits` zero bits
  *
  * The server issues one-time challenges with a strict TTL and verifies in SQL
- * (vault_enclave.auth_pow_consume, db-pending/0270), so the database clock and
+ * (vault_enclave.auth_pow_consume, db/0270), so the database clock and
  * the spent flag decide. This module solves in the crypto worker and verifies
  * in tests; it never touches a secret.
  */

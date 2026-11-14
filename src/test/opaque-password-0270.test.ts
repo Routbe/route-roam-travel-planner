@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
- * db-pending/0270 (OPAQUE password sign-in + Hashcash PoW) and its rollback,
- * replayed on PGlite over every migration in db/. Drives the real server code
+ * db/0270 (OPAQUE password sign-in + Hashcash PoW, live on Neon 2026-11-14) and
+ * its rollback (db-pending/), replayed on PGlite over every migration in db/ before 0270. Drives the real server code
  * (opaque-server.server.ts -> LocalPostgresVaultAdapter as rout_app) and the
  * real pinned Wasm engine for the client side, so the whole RFC 9807 flow runs:
  * PoW -> registration -> login, wrong password, unknown address, replays.
@@ -21,7 +21,8 @@ import { deriveVaultKek } from "@/lib/vault/server-kek";
 import { LocalPostgresVaultAdapter, type VaultSqlExecutor } from "@/lib/vault/vault-port.server";
 
 const ROOT = join(__dirname, "..", "..");
-const SQL_0270 = readFileSync(join(ROOT, "db-pending", "0270_opaque_password_pow.sql"), "utf8");
+const FILE_0270 = "0270_opaque_password_pow.sql";
+const SQL_0270 = readFileSync(join(ROOT, "db", FILE_0270), "utf8");
 const SQL_ROLLBACK = readFileSync(join(ROOT, "db-pending", "0270_opaque_password_pow_rollback.sql"), "utf8");
 const MEMBER = "00000000-0000-4000-8000-0000000000d1";
 const MEMBER_AUTH = "00000000-0000-4000-8000-0000000000a1";
@@ -92,7 +93,7 @@ describe("0270 OPAQUE + PoW on a replay of db/", () => {
     db = await PGlite.create({ extensions: { pgcrypto, btree_gist } });
     const dir = join(ROOT, "db");
     for (const step of planMigrations(listMigrationFiles(dir), new Set())) {
-      if (step.action === "run") await db.exec(`begin;\n${readFileSync(join(dir, step.file), "utf8")}\n;commit;`);
+      if (step.action === "run" && step.file !== FILE_0270) await db.exec(`begin;\n${readFileSync(join(dir, step.file), "utf8")}\n;commit;`);
     }
     await db.query(
       `insert into neon_auth."user" (id, name, email, "emailVerified", "createdAt", "updatedAt") values

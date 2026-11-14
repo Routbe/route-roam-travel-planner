@@ -4,7 +4,7 @@ import { authConfigurationReadiness, type AuthReadiness } from "@/lib/auth-readi
 export type AuthProvidersInfo = {
   providers: string[];
   readiness: AuthReadiness;
-  /** OPAQUE password sign-in is live (db-pending/0270 applied); false hides every password option. */
+  /** OPAQUE password sign-in is live (db/0270 applied); false hides every password option. */
   password?: boolean;
 };
 

@@ -29,7 +29,7 @@ export const CARD_SCAN_ACTION: StepUpAction = "card_scan";
 export const SINGLE_USE_STEP_UP_ACTIONS: readonly StepUpAction[] = ["card_reveal", "card_lifecycle", "card_scan", "vault_token_read", "password_set"];
 /** Opening a vault token (db/0221) needs a passkey, nothing else, spent once. */
 export const VAULT_READ_ACTION: StepUpAction = "vault_token_read";
-/** Setting, replacing or removing the OPAQUE password (db-pending/0270): passkey only, spent once in the vault. */
+/** Setting, replacing or removing the OPAQUE password (db/0270): passkey only, spent once in the vault. */
 export const PASSWORD_SET_ACTION: StepUpAction = "password_set";
 const PASSKEY_ONLY_ACTIONS: readonly StepUpAction[] = [VAULT_READ_ACTION, PASSWORD_SET_ACTION];
 export const isPasskeyOnlyStepUpAction = (action: StepUpAction | undefined) => !!action && PASSKEY_ONLY_ACTIONS.includes(action);
