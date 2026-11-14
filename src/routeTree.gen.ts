@@ -50,7 +50,6 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SafetyRouteImport } from './routes/safety'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SelfHostingRouteImport } from './routes/self-hosting'
-import { Route as ShieldPreviewRouteImport } from './routes/shield-preview'
 import { Route as SignatureRouteImport } from './routes/signature'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SitemapCalendarsDotxmlRouteImport } from './routes/sitemap-calendars[.]xml'
@@ -646,11 +645,6 @@ const SecurityRoute = SecurityRouteImport.update({
 const SelfHostingRoute = SelfHostingRouteImport.update({
   id: '/self-hosting',
   path: '/self-hosting',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ShieldPreviewRoute = ShieldPreviewRouteImport.update({
-  id: '/shield-preview',
-  path: '/shield-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignatureRoute = SignatureRouteImport.update({
@@ -2776,7 +2770,6 @@ export interface FileRoutesByFullPath {
   '/safety': typeof SafetyRouteWithChildren
   '/security': typeof SecurityRoute
   '/self-hosting': typeof SelfHostingRoute
-  '/shield-preview': typeof ShieldPreviewRoute
   '/signature': typeof SignatureRoute
   '/signup': typeof SignupRoute
   '/sitemap-calendars.xml': typeof SitemapCalendarsDotxmlRoute
@@ -3201,7 +3194,6 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/security': typeof SecurityRoute
   '/self-hosting': typeof SelfHostingRoute
-  '/shield-preview': typeof ShieldPreviewRoute
   '/signature': typeof SignatureRoute
   '/signup': typeof SignupRoute
   '/sitemap-calendars.xml': typeof SitemapCalendarsDotxmlRoute
@@ -3631,7 +3623,6 @@ export interface FileRoutesById {
   '/safety': typeof SafetyRouteWithChildren
   '/security': typeof SecurityRoute
   '/self-hosting': typeof SelfHostingRoute
-  '/shield-preview': typeof ShieldPreviewRoute
   '/signature': typeof SignatureRoute
   '/signup': typeof SignupRoute
   '/sitemap-calendars.xml': typeof SitemapCalendarsDotxmlRoute
@@ -4068,7 +4059,6 @@ export interface FileRouteTypes {
     | '/safety'
     | '/security'
     | '/self-hosting'
-    | '/shield-preview'
     | '/signature'
     | '/signup'
     | '/sitemap-calendars.xml'
@@ -4493,7 +4483,6 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/security'
     | '/self-hosting'
-    | '/shield-preview'
     | '/signature'
     | '/signup'
     | '/sitemap-calendars.xml'
@@ -4922,7 +4911,6 @@ export interface FileRouteTypes {
     | '/safety'
     | '/security'
     | '/self-hosting'
-    | '/shield-preview'
     | '/signature'
     | '/signup'
     | '/sitemap-calendars.xml'
@@ -5359,7 +5347,6 @@ export interface RootRouteChildren {
   SafetyRoute: typeof SafetyRouteWithChildren
   SecurityRoute: typeof SecurityRoute
   SelfHostingRoute: typeof SelfHostingRoute
-  ShieldPreviewRoute: typeof ShieldPreviewRoute
   SignatureRoute: typeof SignatureRoute
   SignupRoute: typeof SignupRoute
   SitemapCalendarsDotxmlRoute: typeof SitemapCalendarsDotxmlRoute
@@ -5843,13 +5830,6 @@ declare module '@tanstack/react-router' {
       path: '/self-hosting'
       fullPath: '/self-hosting'
       preLoaderRoute: typeof SelfHostingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shield-preview': {
-      id: '/shield-preview'
-      path: '/shield-preview'
-      fullPath: '/shield-preview'
-      preLoaderRoute: typeof ShieldPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signature': {
@@ -9261,7 +9241,6 @@ const rootRouteChildren: RootRouteChildren = {
   SafetyRoute: SafetyRouteWithChildren,
   SecurityRoute: SecurityRoute,
   SelfHostingRoute: SelfHostingRoute,
-  ShieldPreviewRoute: ShieldPreviewRoute,
   SignatureRoute: SignatureRoute,
   SignupRoute: SignupRoute,
   SitemapCalendarsDotxmlRoute: SitemapCalendarsDotxmlRoute,
