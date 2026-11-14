@@ -96,6 +96,8 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
   const [readiness, setReadiness] = useState<AuthReadiness | null>(initialProviders?.readiness ?? null);
   const [configuredProviders, setConfiguredProviders] = useState<string[]>(initialProviders?.providers ?? []);
   const unavailable = readiness?.ready === false;
+  // Password sign-in exists only once OPAQUE is live (db-pending/0270), never in the admin portal's sign-up.
+  const passwordAvailable = !unavailable && initialProviders?.password === true;
   const [embedded, setEmbedded] = useState(false);
   useEffect(() => {
     try { setEmbedded(window.self !== window.top); } catch { setEmbedded(true); }
@@ -125,10 +127,8 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
     const code = params.get("error");
     const redirect = params.get("redirect") ?? params.get("next");
     const token = params.get("token");
-    if (initialMode === "reset") {
-      if (token && /^[A-Za-z0-9_-]{8,128}$/.test(token)) setResetToken(token);
-      else if (code) toast.error(t("auth.mf.resetInvalid"));
-    } else if (token && /^[0-9a-f]{64}$/.test(token)) {
+    // Old e-mailed reset links land on "reset", which now only explains the passkey/link route.
+    if (initialMode !== "reset" && token && /^[0-9a-f]{64}$/.test(token)) {
       setRecoveryToken(token);
       setMode("recovery");
     }
