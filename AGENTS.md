@@ -105,3 +105,6 @@ use the editor.
 
 ## Booking phases B–G
 - Phase B–G security rules live in src/lib/booking-engine/AGENTS.md and bind every booking, recovery and crypto change. Why: the owner's hard requirements stay in one scoped place.
+
+## Veiligheidsschild
+- The top-bar security level comes only from getSovereigntyHealthScore (src/lib/security/sovereignty-score.ts), recomputed on every read from live factors (passkeys, pake_registered, member_card_factor, root card freeze state) and never stored; unknown facts never raise the level, the score never gates access, and pages that change a factor call signalSecurityFactorsChanged after the server confirms. Why: a stored or optimistic level could drift from the real factors or be mistaken for authorization.
