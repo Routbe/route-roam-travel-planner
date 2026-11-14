@@ -85,8 +85,6 @@ export function SovereigntyShield() {
   if (!ownerId) return null;
 
   const score = query.data ?? UNKNOWN;
-  const look = LOOK[score.level ?? "unknown"];
-  const Icon = look.icon;
   const levelTitle = score.level ? t(`shield.level.${score.level}.title`) : t("shield.unknown.title");
   const short = score.level ? t(`shield.level.${score.level}.short`) : t("shield.unknown.short");
   const changeText = change ? (change.direction === "up" ? t("shield.change.up", { level: t(`shield.level.${change.level}.title`) }) : t(`shield.change.down.${change.reason}`, { level: t(`shield.level.${change.level}.title`) })) : null;
@@ -104,10 +102,7 @@ export function SovereigntyShield() {
             data-level={score.level ?? "unknown"}
             className={TRIGGER_BOX}
           >
-            <span aria-hidden className={cn(PILL_BOX, look.pill, glow && "shield-promoted")} onAnimationEnd={() => setGlow(false)}>
-              <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
-              <span className="hidden truncate sm:inline">{short}</span>
-            </span>
+            <ShieldBadge level={score.level} label={short} glow={glow} onGlowEnd={() => setGlow(false)} />
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-80 p-0" aria-label={t("shield.name")}>
@@ -130,7 +125,19 @@ export function SovereigntyShield() {
   );
 }
 
-function ShieldPanel({ score, changeText, onNavigate }: { score: SovereigntyHealthScore; changeText: string | null; onNavigate: () => void }) {
+/** The visible pill inside the 44×44 trigger (icon only on phones, icon + short label from sm). */
+export function ShieldBadge({ level, label, glow = false, onGlowEnd }: { level: ShieldLevel | null; label: string; glow?: boolean; onGlowEnd?: () => void }) {
+  const look = LOOK[level ?? "unknown"];
+  const Icon = look.icon;
+  return (
+    <span aria-hidden className={cn(PILL_BOX, look.pill, glow && "shield-promoted")} onAnimationEnd={onGlowEnd}>
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
+      <span className="hidden truncate sm:inline">{label}</span>
+    </span>
+  );
+}
+
+export function ShieldPanel({ score, changeText, onNavigate }: { score: SovereigntyHealthScore; changeText: string | null; onNavigate: () => void }) {
   const { t } = useTranslation();
   const look = LOOK[score.level ?? "unknown"];
   const Icon = look.icon;
