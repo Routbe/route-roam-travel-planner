@@ -209,6 +209,7 @@ import { Route as SafetySecurityAdvisoriesRouteImport } from './routes/safety.se
 import { Route as SafetyTermsRouteImport } from './routes/safety.terms'
 import { Route as SafetyTransparencyRouteImport } from './routes/safety.transparency'
 import { Route as SafetyZeroKnowledgeRouteImport } from './routes/safety.zero-knowledge'
+import { Route as SecurePasswordRouteImport } from './routes/secure.password'
 import { Route as SolutionsIndexRouteImport } from './routes/solutions.index'
 import { Route as SolutionsAgenciesRouteImport } from './routes/solutions.agencies'
 import { Route as SolutionsCreatorsRouteImport } from './routes/solutions.creators'
@@ -328,6 +329,8 @@ import { Route as QrToolsCalendarRouteImport } from './routes/qr_.tools_.calenda
 import { Route as QrToolsMapsRouteImport } from './routes/qr_.tools_.maps'
 import { Route as QrToolsWifiRouteImport } from './routes/qr_.tools_.wifi'
 import { Route as RUAliasRouteImport } from './routes/r.u.$alias'
+import { Route as SecurePasswordNewRouteImport } from './routes/secure.password_.new'
+import { Route as SecurePasswordSetRouteImport } from './routes/secure.password_.set'
 import { Route as SupportAccountBillingRouteImport } from './routes/support.account.billing'
 import { Route as SupportAccountDataDomainsRouteImport } from './routes/support.account.data-domains'
 import { Route as SupportAccountDeleteAccountRouteImport } from './routes/support.account.delete-account'
@@ -1446,6 +1449,11 @@ const SafetyZeroKnowledgeRoute = SafetyZeroKnowledgeRouteImport.update({
   path: '/zero-knowledge',
   getParentRoute: () => SafetyRoute,
 } as any)
+const SecurePasswordRoute = SecurePasswordRouteImport.update({
+  id: '/secure/password',
+  path: '/secure/password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SolutionsIndexRoute = SolutionsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -2083,6 +2091,16 @@ const QrToolsWifiRoute = QrToolsWifiRouteImport.update({
 const RUAliasRoute = RUAliasRouteImport.update({
   id: '/r/u/$alias',
   path: '/r/u/$alias',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurePasswordNewRoute = SecurePasswordNewRouteImport.update({
+  id: '/secure/password_/new',
+  path: '/secure/password/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurePasswordSetRoute = SecurePasswordSetRouteImport.update({
+  id: '/secure/password_/set',
+  path: '/secure/password/set',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SupportAccountBillingRoute = SupportAccountBillingRouteImport.update({
@@ -2900,6 +2918,7 @@ export interface FileRoutesByFullPath {
   '/safety/terms': typeof SafetyTermsRoute
   '/safety/transparency': typeof SafetyTransparencyRoute
   '/safety/zero-knowledge': typeof SafetyZeroKnowledgeRoute
+  '/secure/password': typeof SecurePasswordRoute
   '/solutions/agencies': typeof SolutionsAgenciesRoute
   '/solutions/creators': typeof SolutionsCreatorsRoute
   '/solutions/developers': typeof SolutionsDevelopersRoute
@@ -3026,6 +3045,8 @@ export interface FileRoutesByFullPath {
   '/qr/tools/maps': typeof QrToolsMapsRoute
   '/qr/tools/wifi': typeof QrToolsWifiRoute
   '/r/u/$alias': typeof RUAliasRoute
+  '/secure/password/new': typeof SecurePasswordNewRoute
+  '/secure/password/set': typeof SecurePasswordSetRoute
   '/support/account/billing': typeof SupportAccountBillingRoute
   '/support/account/data-domains': typeof SupportAccountDataDomainsRoute
   '/support/account/delete-account': typeof SupportAccountDeleteAccountRoute
@@ -3316,6 +3337,7 @@ export interface FileRoutesByTo {
   '/safety/terms': typeof SafetyTermsRoute
   '/safety/transparency': typeof SafetyTransparencyRoute
   '/safety/zero-knowledge': typeof SafetyZeroKnowledgeRoute
+  '/secure/password': typeof SecurePasswordRoute
   '/solutions/agencies': typeof SolutionsAgenciesRoute
   '/solutions/creators': typeof SolutionsCreatorsRoute
   '/solutions/developers': typeof SolutionsDevelopersRoute
@@ -3441,6 +3463,8 @@ export interface FileRoutesByTo {
   '/qr/tools/maps': typeof QrToolsMapsRoute
   '/qr/tools/wifi': typeof QrToolsWifiRoute
   '/r/u/$alias': typeof RUAliasRoute
+  '/secure/password/new': typeof SecurePasswordNewRoute
+  '/secure/password/set': typeof SecurePasswordSetRoute
   '/support/account/billing': typeof SupportAccountBillingRoute
   '/support/account/data-domains': typeof SupportAccountDataDomainsRoute
   '/support/account/delete-account': typeof SupportAccountDeleteAccountRoute
@@ -3747,6 +3771,7 @@ export interface FileRoutesById {
   '/safety/terms': typeof SafetyTermsRoute
   '/safety/transparency': typeof SafetyTransparencyRoute
   '/safety/zero-knowledge': typeof SafetyZeroKnowledgeRoute
+  '/secure/password': typeof SecurePasswordRoute
   '/solutions/agencies': typeof SolutionsAgenciesRoute
   '/solutions/creators': typeof SolutionsCreatorsRoute
   '/solutions/developers': typeof SolutionsDevelopersRoute
@@ -3873,6 +3898,8 @@ export interface FileRoutesById {
   '/qr_/tools_/maps': typeof QrToolsMapsRoute
   '/qr_/tools_/wifi': typeof QrToolsWifiRoute
   '/r/u/$alias': typeof RUAliasRoute
+  '/secure/password_/new': typeof SecurePasswordNewRoute
+  '/secure/password_/set': typeof SecurePasswordSetRoute
   '/support/account/billing': typeof SupportAccountBillingRoute
   '/support/account/data-domains': typeof SupportAccountDataDomainsRoute
   '/support/account/delete-account': typeof SupportAccountDeleteAccountRoute
@@ -4180,6 +4207,7 @@ export interface FileRouteTypes {
     | '/safety/terms'
     | '/safety/transparency'
     | '/safety/zero-knowledge'
+    | '/secure/password'
     | '/solutions/agencies'
     | '/solutions/creators'
     | '/solutions/developers'
@@ -4306,6 +4334,8 @@ export interface FileRouteTypes {
     | '/qr/tools/maps'
     | '/qr/tools/wifi'
     | '/r/u/$alias'
+    | '/secure/password/new'
+    | '/secure/password/set'
     | '/support/account/billing'
     | '/support/account/data-domains'
     | '/support/account/delete-account'
@@ -4596,6 +4626,7 @@ export interface FileRouteTypes {
     | '/safety/terms'
     | '/safety/transparency'
     | '/safety/zero-knowledge'
+    | '/secure/password'
     | '/solutions/agencies'
     | '/solutions/creators'
     | '/solutions/developers'
@@ -4721,6 +4752,8 @@ export interface FileRouteTypes {
     | '/qr/tools/maps'
     | '/qr/tools/wifi'
     | '/r/u/$alias'
+    | '/secure/password/new'
+    | '/secure/password/set'
     | '/support/account/billing'
     | '/support/account/data-domains'
     | '/support/account/delete-account'
@@ -5026,6 +5059,7 @@ export interface FileRouteTypes {
     | '/safety/terms'
     | '/safety/transparency'
     | '/safety/zero-knowledge'
+    | '/secure/password'
     | '/solutions/agencies'
     | '/solutions/creators'
     | '/solutions/developers'
@@ -5152,6 +5186,8 @@ export interface FileRouteTypes {
     | '/qr_/tools_/maps'
     | '/qr_/tools_/wifi'
     | '/r/u/$alias'
+    | '/secure/password_/new'
+    | '/secure/password_/set'
     | '/support/account/billing'
     | '/support/account/data-domains'
     | '/support/account/delete-account'
@@ -5371,6 +5407,7 @@ export interface RootRouteChildren {
   RUsernameRoute: typeof RUsernameRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
   SSlugRoute: typeof SSlugRoute
+  SecurePasswordRoute: typeof SecurePasswordRoute
   StatsTokenRoute: typeof StatsTokenRoute
   StudioGridRoute: typeof StudioGridRoute
   SubscribeConfirmRoute: typeof SubscribeConfirmRoute
@@ -5429,6 +5466,8 @@ export interface RootRouteChildren {
   QrToolsMapsRoute: typeof QrToolsMapsRoute
   QrToolsWifiRoute: typeof QrToolsWifiRoute
   RUAliasRoute: typeof RUAliasRoute
+  SecurePasswordNewRoute: typeof SecurePasswordNewRoute
+  SecurePasswordSetRoute: typeof SecurePasswordSetRoute
   UUsernameSlugRoute: typeof UUsernameSlugRoute
   UUsernameAgendaRoute: typeof UUsernameAgendaRoute
   UUsernameAskRoute: typeof UUsernameAskRoute
@@ -6906,6 +6945,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SafetyZeroKnowledgeRouteImport
       parentRoute: typeof SafetyRoute
     }
+    '/secure/password': {
+      id: '/secure/password'
+      path: '/secure/password'
+      fullPath: '/secure/password'
+      preLoaderRoute: typeof SecurePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/solutions/': {
       id: '/solutions/'
       path: '/'
@@ -7737,6 +7783,20 @@ declare module '@tanstack/react-router' {
       path: '/r/u/$alias'
       fullPath: '/r/u/$alias'
       preLoaderRoute: typeof RUAliasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/secure/password_/new': {
+      id: '/secure/password_/new'
+      path: '/secure/password/new'
+      fullPath: '/secure/password/new'
+      preLoaderRoute: typeof SecurePasswordNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/secure/password_/set': {
+      id: '/secure/password_/set'
+      path: '/secure/password/set'
+      fullPath: '/secure/password/set'
+      preLoaderRoute: typeof SecurePasswordSetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/support/account/billing': {
@@ -9241,6 +9301,7 @@ const rootRouteChildren: RootRouteChildren = {
   RUsernameRoute: RUsernameRoute,
   ReviewTokenRoute: ReviewTokenRoute,
   SSlugRoute: SSlugRoute,
+  SecurePasswordRoute: SecurePasswordRoute,
   StatsTokenRoute: StatsTokenRoute,
   StudioGridRoute: StudioGridRoute,
   SubscribeConfirmRoute: SubscribeConfirmRoute,
@@ -9299,6 +9360,8 @@ const rootRouteChildren: RootRouteChildren = {
   QrToolsMapsRoute: QrToolsMapsRoute,
   QrToolsWifiRoute: QrToolsWifiRoute,
   RUAliasRoute: RUAliasRoute,
+  SecurePasswordNewRoute: SecurePasswordNewRoute,
+  SecurePasswordSetRoute: SecurePasswordSetRoute,
   UUsernameSlugRoute: UUsernameSlugRoute,
   UUsernameAgendaRoute: UUsernameAgendaRoute,
   UUsernameAskRoute: UUsernameAskRoute,

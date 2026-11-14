@@ -107,3 +107,30 @@ describe("public page CSP", () => {
     expect(csp).toContain("base-uri 'self'");
   });
 });
+
+import { isSecureDocumentPath, secureDocumentHeaders, withSecureDocumentHeaders } from "@/lib/security-headers";
+describe("/secure/* documents (rule F.1)", () => {
+  it("only /secure and its sub-paths count as secure documents", () => {
+    expect(isSecureDocumentPath("/secure")).toBe(true);
+    expect(isSecureDocumentPath("/secure/password/set")).toBe(true);
+    expect(isSecureDocumentPath("/securely")).toBe(false);
+    expect(isSecureDocumentPath("/auth/sign-in")).toBe(false);
+  });
+  it("are cross-origin isolated, uncached and frame-proof", () => {
+    const h = secureDocumentHeaders(true);
+    expect(h["Cross-Origin-Opener-Policy"]).toBe("same-origin");
+    expect(h["Cross-Origin-Embedder-Policy"]).toBe("require-corp");
+    expect(h["Cache-Control"]).toBe("no-store");
+    expect(h["Content-Security-Policy"]).toContain("connect-src 'self'");
+    expect(h["Content-Security-Policy"]).toContain("frame-ancestors 'self'");
+    expect(h["Content-Security-Policy"]).not.toContain("wasm-unsafe-eval");
+  });
+  it("leaves every other page without COOP/COEP", () => {
+    const page = new Response("x", { headers: { "content-type": "text/html" } });
+    const out = withSecureDocumentHeaders(new Request("https://rout.be/jan"), page);
+    expect(out.headers.get("Cross-Origin-Embedder-Policy")).toBeNull();
+    const secure = withSecureDocumentHeaders(new Request("https://rout.be/secure/password"), new Response("x"));
+    expect(secure.headers.get("Cross-Origin-Embedder-Policy")).toBe("require-corp");
+    expect(secure.headers.get("Strict-Transport-Security")).toContain("max-age");
+  });
+});

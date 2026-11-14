@@ -39,6 +39,7 @@ export type PasswordOp =
   | "password.backspace"
   | "password.clear"
   | "password.close"
+  | "password.equal"
   | "pow.solve"
   | "opaque.registerStart"
   | "opaque.registerFinish"
@@ -286,6 +287,17 @@ export const passwordHandlers: PasswordHandlers = {
   async "password.close"({ slot }) {
     if (isHandle(slot)) closeSlot(slot);
     return null;
+  },
+
+  async "password.equal"({ a, b }) {
+    const x = liveSlot(a);
+    const y = liveSlot(b);
+    // Constant time: every byte of both fixed pages is compared, whatever the lengths.
+    const p = new Uint8Array(x.memory.buffer);
+    const q = new Uint8Array(y.memory.buffer);
+    let diff = x.len ^ y.len;
+    for (let i = 0; i < p.length; i++) diff |= (p[i] ?? 0) ^ (q[i] ?? 0);
+    return { equal: diff === 0 && x !== y };
   },
 
   async "pow.solve"({ challenge, bits }) {

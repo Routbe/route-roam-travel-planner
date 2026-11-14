@@ -3,13 +3,15 @@
  *
  * First factor (any of):
  *   - a WebAuthn passkey assertion (user verification required) — complete on its own;
- *   - e-mail + password (`/sign-in/email`);
+ *   - an OPAQUE password (`/opaque/login/*`, RFC 9807 behind Hashcash PoW): the
+ *     password never reaches the server; Better Auth's `/sign-in/email` is gone;
  *   - a one-time e-mail link (`/sign-in/magic-link` → `/magic-link/verify`).
  * When the member has 2FA switched on, password and e-mail-link sign-ins stop at a
  * second step: authenticator app (TOTP), SMS code, recovery code or a passkey.
  * Admins must have 2FA switched on before any admin surface answers.
  *
- * New accounts are still created only through the passkey sign-up ticket;
+ * New accounts are created only through the signed sign-up ticket plus a first
+ * passkey or an OPAQUE password (`/opaque/signup/*`);
  * configured providers can sign in existing members on the public portal.
  */
 
@@ -31,16 +33,12 @@ const ALLOWED_EXACT = new Set([
   "/sign-in/social",
   "/sign-in/oauth2",
   "/fediverse/verify",
-  // First factors besides passkeys.
-  "/sign-in/email",
+  // First factor besides passkeys and OPAQUE passwords.
   "/sign-in/magic-link",
   "/magic-link/verify",
-  // Password set/reset by e-mail, and change while signed in (needs the current one).
-  "/request-password-reset",
-  "/reset-password",
-  "/change-password",
 ]);
-const ALLOWED_PREFIXES = ["/passkey/", "/two-factor/", "/callback/", "/oauth2/callback/", "/reset-password/"];
+/** `/opaque/` = OPAQUE password sign-in/sign-up; each step spends a one-time Hashcash challenge. */
+const ALLOWED_PREFIXES = ["/passkey/", "/two-factor/", "/callback/", "/oauth2/callback/", "/opaque/"];
 
 export type AuthPathDecision = { allow: true } | { allow: false; code: "method_disabled" };
 
@@ -51,7 +49,7 @@ export function signInPathDecision(relativePath: string): AuthPathDecision {
 }
 
 /** Public first-factor endpoints: bot check + fail-closed rate limit before Better Auth. */
-export const FIRST_FACTOR_PATHS: ReadonlySet<string> = new Set(["/sign-in/email", "/sign-in/magic-link", "/request-password-reset"]);
+export const FIRST_FACTOR_PATHS: ReadonlySet<string> = new Set(["/sign-in/magic-link"]);
 
 export const METHOD_DISABLED_MESSAGE =
   "Deze aanmeldmethode bestaat niet bij ROUT. Log in met je passkey, een e-maillink of je wachtwoord.";

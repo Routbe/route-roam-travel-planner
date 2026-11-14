@@ -59,7 +59,6 @@ import { updateAuthUser } from "@/lib/auth.functions";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { TwoFactorSetup } from "@/components/auth/TwoFactorSetup";
-import { withAltcha } from "@/lib/altcha-client";
 import { authClient } from "@/lib/auth-client";
 import { LOCALES, LOCALE_LABELS, useI18n } from "@/lib/i18n";
 import { useLanguagePreference } from "@/hooks/useLanguagePreference";
@@ -119,7 +118,6 @@ export default function AccountSettings() {
   const [mfaCode, setMfaCode] = useState("");
   const [mfaPassword, setMfaPassword] = useState("");
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
-  const [passwordLinkBusy, setPasswordLinkBusy] = useState(false);
   const [mfaUri, setMfaUri] = useState<string | null>(null);
   const [mfaBackup, setMfaBackup] = useState<string[]>([]);
   const [mfaCodesSaved, setMfaCodesSaved] = useState(false);
@@ -261,20 +259,6 @@ export default function AccountSettings() {
     if (res.error) return toast.error(res.error.message ?? "2FA kon niet uitgeschakeld worden.");
     setMfaEnabled(false);
     toast.success(trI18n.t("ui.82418cec7c"));
-  };
-
-  const sendPasswordLink = async () => {
-    if (!user.email) return;
-    setPasswordLinkBusy(true);
-    try {
-      const res = await withAltcha(user.email, (proof) =>
-        authClient.requestPasswordReset({ email: user.email!, redirectTo: "/auth/reset-password", fetchOptions: { headers: { "x-altcha": proof } } }),
-      );
-      if ((res as { error?: { message?: string } }).error) toast.error((res as { error: { message?: string } }).error.message ?? "Versturen mislukt.");
-      else toast.success(`Link verstuurd naar ${user.email}`);
-    } finally {
-      setPasswordLinkBusy(false);
-    }
   };
 
   const signOutOthers = () => openNeonAccount();
@@ -535,10 +519,11 @@ export default function AccountSettings() {
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-3">
               <div className="min-w-0">
                 <p className="text-sm font-medium">Wachtwoord</p>
-                <p className="text-xs text-muted-foreground">Optioneel. We mailen je een link om een wachtwoord in te stellen of te wijzigen; daarna worden je andere apparaten afgemeld.</p>
+                <p className="text-xs text-muted-foreground">Optioneel. Je wachtwoord verlaat je apparaat nooit (OPAQUE). Instellen, wijzigen of verwijderen vraagt je passkey en gebeurt op een aparte, beveiligde pagina.</p>
               </div>
-              <Button size="sm" variant="outline" onClick={sendPasswordLink} disabled={passwordLinkBusy}>
-                {passwordLinkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link mailen"}
+              {/* Full page load: /secure/* is its own cross-origin-isolated document. */}
+              <Button size="sm" variant="outline" asChild>
+                <a href="/secure/password/set">Beheren</a>
               </Button>
             </div>
           </section>

@@ -171,7 +171,7 @@ export function opaquePasswordAuth() {
           console.error("[opaque-signup] recording age failed", e instanceof Error ? e.message : e);
         }
         await openSession(raw, user);
-        return ctx.json({ ok: true, memberId: user.id });
+        return ctx.json({ ok: true, memberId: await memberIdFor(user.id) });
       }),
     },
   };

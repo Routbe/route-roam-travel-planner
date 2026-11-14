@@ -1,7 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import { authConfigurationReadiness, type AuthReadiness } from "@/lib/auth-readiness";
 
-export type AuthProvidersInfo = { providers: string[]; readiness: AuthReadiness };
+export type AuthProvidersInfo = {
+  providers: string[];
+  readiness: AuthReadiness;
+  /** OPAQUE password sign-in is live (db-pending/0270 applied); false hides every password option. */
+  password?: boolean;
+};
+
+async function passwordAvailable(databaseReady: boolean): Promise<boolean> {
+  if (!databaseReady) return false;
+  try {
+    const { opaqueAvailable } = await import("@/lib/auth/opaque-server.server");
+    return await opaqueAvailable();
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Same answer as GET /api/public/auth/providers (names only, never values), so
@@ -12,8 +27,10 @@ export const getAuthProviders = createServerFn({ method: "GET" }).handler(async 
   const { enabledProviders, resolveAuthSecret } = await import("@/lib/better-auth.server");
   const { hasDatabase } = await import("@/lib/neon");
   const fediverse = process.env["APP_SESSION_SECRET"] || process.env["NEON_AUTH_COOKIE_SECRET"] ? ["mastodon", "bluesky"] : [];
+  const readiness = authConfigurationReadiness(hasDatabase(), Boolean(resolveAuthSecret()));
   return {
     providers: [...enabledProviders(), ...fediverse],
-    readiness: authConfigurationReadiness(hasDatabase(), Boolean(resolveAuthSecret())),
+    readiness,
+    password: await passwordAvailable(readiness.ready),
   };
 });

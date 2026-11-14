@@ -85,6 +85,68 @@ export function securityHeaders(isHttps: boolean, pathname = "/"): Record<string
   return h;
 }
 
+/** Vault, recovery and password screens: their own documents, the only cross-origin-isolated ones (rule F.1). */
+export const SECURE_DOCUMENT_PREFIX = "/secure";
+
+export function isSecureDocumentPath(pathname: string): boolean {
+  return pathname === SECURE_DOCUMENT_PREFIX || pathname.startsWith(`${SECURE_DOCUMENT_PREFIX}/`);
+}
+
+/**
+ * CSP for /secure/*: only our own origin, no frames in or out, no Wasm on the
+ * main thread (Argon2id/OPAQUE run in the crypto worker, whose own script
+ * response carries its policy). Inline scripts stay for SSR hydration.
+ */
+export const SECURE_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+  "img-src 'self' data: blob:",
+  "connect-src 'self'",
+  "worker-src 'self'",
+  "frame-src 'none'",
+  "form-action 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+].join("; ");
+
+/**
+ * Headers for a /secure/* document: COOP same-origin + COEP require-corp
+ * (cross-origin isolated, no opener to or from other sites), same-origin CORP,
+ * no caching and no referrer. Applied in src/server.ts.
+ */
+export function secureDocumentHeaders(isHttps: boolean): Record<string, string> {
+  const h: Record<string, string> = {
+    "Content-Security-Policy": SECURE_CSP,
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Embedder-Policy": "require-corp",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=(), clipboard-read=()",
+    "Cache-Control": "no-store",
+  };
+  if (isHttps) h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+  return h;
+}
+
+/** Copies the secure headers onto a /secure/* response (other paths pass through unchanged). */
+export function withSecureDocumentHeaders(request: Request, response: Response): Response {
+  let url: URL;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return response;
+  }
+  if (!isSecureDocumentPath(url.pathname)) return response;
+  const headers = new Headers(response.headers);
+  const https = url.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
+  for (const [k, v] of Object.entries(secureDocumentHeaders(https))) headers.set(k, v);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 const SESSION_COOKIE = /^(rout_session|__Secure-rout_session|better-auth\.[^=]*|__Secure-better-auth\.[^=]*)=/i;
 
 /** Returns the problems with a session Set-Cookie header (empty = fine or not a session cookie). */

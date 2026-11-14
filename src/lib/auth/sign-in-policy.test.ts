@@ -4,13 +4,15 @@ import { signSignupTicket, verifySignupTicket, SIGNUP_TICKET_TTL_S } from "./sig
 
 describe("sign-in gateway policy", () => {
   it.each([
-    "/sign-in/email",
     "/sign-in/magic-link",
     "/magic-link/verify",
-    "/request-password-reset",
-    "/reset-password",
-    "/reset-password/abc123",
-    "/change-password",
+    // Passwords only through OPAQUE (Stap 3): the server never sees one.
+    "/opaque/login/pow",
+    "/opaque/login/start",
+    "/opaque/login/finish",
+    "/opaque/signup/pow",
+    "/opaque/signup/start",
+    "/opaque/signup/finish",
     "/two-factor/verify-totp",
     "/two-factor/send-otp",
     "/two-factor/verify-otp",
@@ -34,6 +36,12 @@ describe("sign-in gateway policy", () => {
     // New accounts only via the reviewed passkey sign-up ticket.
     "/sign-up/email",
     "/forget-password",
+    // Better Auth's plaintext password endpoints are closed for good.
+    "/sign-in/email",
+    "/request-password-reset",
+    "/reset-password",
+    "/reset-password/abc123",
+    "/change-password",
     "/set-password",
     "/verify-email",
     "/something-new",

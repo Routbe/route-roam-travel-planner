@@ -3,7 +3,8 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/auth/middleware";
 import { CARD_SCAN_ACTION, allowedStepUpMethods, isCardStepUpAction, type StepUpAction } from "@/lib/auth/step-up-rules";
 
-const actionInput = z.enum(["card_reveal", "card_lifecycle", "card_scan"]).optional();
+/** password_set is passkey-only (step-up-rules.ts): the dialog then offers only the passkey. */
+const actionInput = z.enum(["card_reveal", "card_lifecycle", "card_scan", "password_set"]).optional();
 
 /** Which methods this account may use for step-up (card actions accept every active factor). */
 export const getStepUpOptions = createServerFn({ method: "GET" })

@@ -23,7 +23,7 @@ function request(path: string, email: unknown) {
 }
 describe("sign-in gateway", () => {
   for (const mode of ["admin", "public"]) {
-    for (const path of ["/sign-up/email", "/forget-password"]) {
+    for (const path of ["/sign-up/email", "/forget-password", "/sign-in/email", "/request-password-reset", "/reset-password"]) {
       it(`refuses ${path} in ${mode} mode with method_disabled`, async () => {
         vi.stubEnv("APP_MODE", mode);
         const res = await request(path, "owner@example.com");
@@ -31,7 +31,7 @@ describe("sign-in gateway", () => {
         expect((await res.json()).code).toBe("method_disabled");
       });
     }
-    for (const path of ["/sign-in/email", "/sign-in/magic-link", "/request-password-reset"]) {
+    for (const path of ["/sign-in/magic-link", "/opaque/login/pow"]) {
       it(`lets ${path} through in ${mode} mode`, async () => {
         vi.stubEnv("APP_MODE", mode);
         const res = await request(path, "owner@example.com");

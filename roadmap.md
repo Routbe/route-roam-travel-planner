@@ -140,11 +140,14 @@
 - [x] 0267 toegepast (één transactie), checksum/rechten/constraint nagekeken, CODE_SCHEMA_LEVEL 0267
 - [x] Stap 2: TLA+-model herstel v4 (formal/recovery-v4) + TLC in CI (.github/workflows/tla-recovery-v4.yml): 3 hoofdmodellen groen, 5 mutanten breken, 10 getuigen bereikt
 - [ ] Stap 2 nazorg: eerste CI-run op GitHub bekijken zodra de code daar staat
-- [ ] Stap 3: OPAQUE + Argon2id (Wasm, vast geheugen) + Hashcash-PoW; migratie in db-pending/
+- [x] Stap 3 code: OPAQUE + Argon2id (Wasm, vast geheugen) + Hashcash-PoW aangesloten: plugin in Better Auth, gewone wachtwoorden uit, /secure/password (inloggen), /secure/password/new (aanmelden), /secure/password/set (instellen/verwijderen met passkey-step-up), extra voorzichtig typen, wissen na 30 s weg
+- [ ] Stap 3 live: 0270 toepassen op Neon (wacht op aparte GO van de eigenaar); daarna echte inlog-test met een testaccount
+- [ ] Stap 3 nazorg: /secure/* krijgt bij hosting op Vercel dezelfde headers (nu via src/server.ts); de algemene securityHeaders() worden nergens toegepast (bevinding, niet gewijzigd)
 - [ ] Stap 4: Veiligheidsschild (3 niveaus) in topbalk, NL/EN/FR/DE
 - [ ] Stap 5: FIDO MDS3-attestatie (gesigneerde lijst, periodiek ophalen)
 - [ ] Stap 6: herstel v4 (2-van-3 zonder kaart, 3-van-4 met kaart); 0268/0269 herschrijven volgens het TLA+-model (verse mastergeneratie per ceremonie, tweede step-up bij terugschalen, idempotentiesleutels, TTL op wachtende ceremonie) + PGlite-test die TLC-sporen naspeelt
 - [ ] Stap 7: gasten zonder spoor (pseudoniem per epoch, BBS+, blinde buckets, ZK-range op commitment)
 - [ ] Stap 8: hybride PQ-ratchet + RVE2
 - [ ] Stap 9: RLS non-interference-model (Z3/Lean) vergeleken met de snapshot in CI
-- [ ] /secure/*-documenten met COOP/COEP; Wasm SRI (SHA-384) en reproduceerbare builds
+- [x] /secure/*-documenten met COOP/COEP (wachtwoordpagina's)
+- [ ] Kluis- en herstelschermen ook naar /secure/*; Wasm SRI (SHA-384) en reproduceerbare builds

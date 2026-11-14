@@ -95,7 +95,7 @@ use the editor.
 - Before a contract closes a table, the EXPAND step turns every SECURITY INVOKER function or trigger that touches it into SECURITY DEFINER. Why: triggers run with the caller's rights, so a closed table would silently break app writes on other tables.
 
 ## Account creation
-- A Better Auth user row is created only inside runPasskeyAccountCreation (passkey-enrollment.server.ts); the user.create.before hook refuses every other path and the bridge creates no public.users row for an identity without a passkey. Why: registration must be passkey-only regardless of which provider or plugin is enabled.
+- A Better Auth user row is created only inside runPasskeyAccountCreation or runOpaqueAccountCreation (same signed ticket); the user.create.before hook refuses every other path, Better Auth emailAndPassword stays off, and the bridge creates no public.users row without a passkey or OPAQUE record. Why: the server must never receive a password. Password pages: src/lib/auth/AGENTS.md.
 
 ## Account recovery requests
 - public.auth_recovery_requests is reached only through the rout_recovery_* SECURITY DEFINER functions (db/0263): filing answers the same for every input, deciding requires a full admin with two-factor on taken from rout.current_user_id, and binding tokens reach the database only as SHA-256. Why: no account enumeration, no trust in caller-supplied admin ids, and no raw token at rest.
