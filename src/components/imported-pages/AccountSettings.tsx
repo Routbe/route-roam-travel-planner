@@ -59,7 +59,6 @@ import { updateAuthUser } from "@/lib/auth.functions";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { TwoFactorSetup } from "@/components/auth/TwoFactorSetup";
-import { withAltcha } from "@/lib/altcha-client";
 import { authClient } from "@/lib/auth-client";
 import { LOCALES, LOCALE_LABELS, useI18n } from "@/lib/i18n";
 import { useLanguagePreference } from "@/hooks/useLanguagePreference";
