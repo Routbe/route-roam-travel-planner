@@ -246,84 +246,12 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
     }
   };
 
-  const passwordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (unavailable) { toast.error(AUTH_UNAVAILABLE_TEXT[locale]); return; }
-    if (!emailAccepted() || !password) return;
-    setLoading(true);
-    const address = email.trim().toLowerCase();
-    try {
-      const result = await withAltcha(address, (proof) =>
-        authClient.signIn.email({ email: address, password, callbackURL: POST_AUTH_PATH, fetchOptions: { headers: { "x-altcha": proof } } }),
-      );
-      const error = (result as { error?: { code?: string; message?: string; status?: number } } | undefined)?.error;
-      if (error) {
-        toast.error(failMessage(error, t("auth.ui.toast.signinFailed")));
-        return;
-      }
-      setPassword("");
-      if ((result as { data?: { twoFactorRedirect?: boolean } }).data?.twoFactorRedirect) {
-        setStep("second");
-        return;
-      }
-      toast.success(t("auth.ui.toast.welcome"));
-      await refresh();
-    } catch (err) {
-      toast.error(errorMessage(err, t("auth.ui.toast.signinFailed")));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /** Mails a link to set a first password or replace a forgotten one. */
-  const requestReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (unavailable) { toast.error(AUTH_UNAVAILABLE_TEXT[locale]); return; }
-    if (!emailAccepted()) return;
-    setLoading(true);
-    const address = email.trim().toLowerCase();
-    try {
-      const result = await withAltcha(address, (proof) =>
-        authClient.requestPasswordReset({ email: address, redirectTo: "/auth/reset-password", fetchOptions: { headers: { "x-altcha": proof } } }),
-      );
-      const error = (result as { error?: { code?: string; message?: string; status?: number } } | undefined)?.error;
-      if (error) {
-        toast.error(failMessage(error, t("auth.ui.toast.failed")));
-        return;
-      }
-      setStep("reset-sent");
-    } catch (err) {
-      toast.error(errorMessage(err, t("auth.ui.toast.failed")));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const saveNewPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetToken) return;
-    if (password.length < MIN_PASSWORD) { toast.error(t("auth.mf.tooShort")); return; }
-    if (password !== password2) { toast.error(t("auth.mf.mismatch")); return; }
-    setLoading(true);
-    try {
-      const res = await authClient.resetPassword({ newPassword: password, token: resetToken });
-      if (res.error) {
-        toast.error(/token/i.test(res.error.message ?? "") ? t("auth.mf.resetInvalid") : res.error.message || t("auth.ui.toast.failed"));
-        return;
-      }
-      setPassword("");
-      setPassword2("");
-      setResetToken(null);
-      toast.success(t("auth.mf.resetDone"));
-      setMode("signin");
-      setStep("password");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signUp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /**
+   * Same checks and signed ticket for both sign-up kinds; `withPassword` hands the
+   * ticket to the secure password page in the URL fragment (never sent to a server).
+   */
+  const signUp = async (e: React.FormEvent | null, withPassword = false) => {
+    e?.preventDefault();
     if (!consented) { toast.error(t("auth.signupConsent.required")); return; }
     const ageProblem = signupAgeProblem({ dob, parentEmail, email });
     if (ageProblem) {
@@ -340,6 +268,10 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
       );
       if (result.error || typeof result.data?.["ticket"] !== "string") {
         toast.error(result.error?.message || t("auth.ui.toast.failed"));
+        return;
+      }
+      if (withPassword) {
+        window.location.assign(`${SECURE_PASSWORD_PATH}/new#${new URLSearchParams({ ticket: result.data["ticket"] as string, email: address }).toString()}`);
         return;
       }
       await enrollPasskey(result.data["ticket"] as string, "ROUT");
@@ -472,7 +404,7 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
 
           {mode === "signin" && step !== "second" && (
             <div className="space-y-3">
-              {(step === "choose" || step === "password") && (
+              {step === "choose" && (
                 <div className={adminPortal ? "space-y-3" : "flex flex-col gap-4 md:grid md:grid-cols-[1fr_auto_1fr] md:gap-8"}>
                   {!adminPortal && <>
                     <div className="md:order-3"><PublicProviderSignIn configured={configuredProviders} readiness={readiness} disabled={loading} /></div>
@@ -488,29 +420,22 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
                   <div className="flex items-center gap-3 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">
                     <span className="h-px flex-1 bg-border" aria-hidden /> {t("auth.mf.orEmail")} <span className="h-px flex-1 bg-border" aria-hidden />
                   </div>
-                  <form onSubmit={step === "password" ? passwordLogin : (e) => { e.preventDefault(); void sendLink(); }} className="space-y-3">
+                  <form onSubmit={(e) => { e.preventDefault(); void sendLink(); }} className="space-y-3">
                     {emailField}
-                    {step === "password" && (
-                      <div className="space-y-1">
-                        <Label htmlFor="auth-password" className="text-sm">{t("auth.mf.password")}</Label>
-                        <Input id="auth-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" maxLength={128} required className="h-10 rounded-lg" />
-                      </div>
-                    )}
-                    {step === "password" ? (
-                      <Button type="submit" disabled={loading || unavailable || !password} className="h-11 w-full gap-2 rounded-lg">
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} {t("auth.ui.password.signin")}
-                      </Button>
-                    ) : (
                       <Button type="submit" variant="outline" disabled={loading || unavailable || !!emailError} className="h-11 w-full gap-2 rounded-lg">
                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {t("auth.mf.sendLink")}
                       </Button>
-                    )}
                   </form>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    {step === "password"
-                      ? linkButtonStep("choose", t("auth.mf.useLink"), Mail)
-                      : linkButtonStep("password", t("auth.mf.usePassword"), Lock)}
-                    {linkButtonStep("reset-request", t("auth.mf.forgot"), KeyRound)}
+                    {passwordAvailable && (
+                      // Full page load: the secure document is cross-origin isolated (COOP/COEP).
+                      <a
+                        href={`${SECURE_PASSWORD_PATH}${EMAIL_REGEX.test(email.trim()) ? `#${new URLSearchParams({ email: email.trim().toLowerCase() }).toString()}` : ""}`}
+                        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                      >
+                        <Lock className="h-3.5 w-3.5" aria-hidden /> {t("auth.mf.usePassword")}
+                      </a>
+                    )}
                   </div>
                   {adminPortal && <p className="text-[11px] text-muted-foreground">{t("auth.mf.adminNote")}</p>}
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
@@ -546,52 +471,14 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
                 </div>
               )}
 
-              {step === "reset-request" && (
-                <form onSubmit={requestReset} className="space-y-3">
-                  <div>
-                    <p className="font-medium text-foreground">{t("auth.mf.resetRequestTitle")}</p>
-                    <p className="text-sm text-muted-foreground">{t("auth.mf.resetRequestBody")}</p>
-                  </div>
-                  {emailField}
-                  <Button type="submit" disabled={loading || unavailable || !!emailError} className="h-11 w-full gap-2 rounded-lg">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} {t("auth.mf.resetSend")}
-                  </Button>
-                  {linkButtonStep("choose", t("auth.mf.backToSignIn"), ArrowLeft)}
-                </form>
-              )}
-
-              {step === "reset-sent" && (
-                <div className="space-y-3 rounded-2xl border border-border bg-card/60 p-4 text-center">
-                  <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/60"><MailCheck className="h-5 w-5" aria-hidden /></span>
-                  <p className="text-sm text-muted-foreground">{t("auth.mf.resetSent", { email: email.trim().toLowerCase() })}</p>
-                  {linkButtonStep("choose", t("auth.mf.backToSignIn"), ArrowLeft)}
-                </div>
-              )}
             </div>
           )}
 
           {mode === "reset" && (
-            resetToken ? (
-              <form onSubmit={saveNewPassword} className="space-y-3">
-                <p className="text-sm text-muted-foreground">{t("auth.mf.resetBody")}</p>
-                <div className="space-y-1">
-                  <Label htmlFor="auth-new-password" className="text-sm">{t("auth.mf.newPassword")}</Label>
-                  <Input id="auth-new-password" type="password" value={password} minLength={MIN_PASSWORD} maxLength={128} autoComplete="new-password" required onChange={(e) => setPassword(e.target.value)} className="h-10 rounded-lg" />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="auth-new-password-2" className="text-sm">{t("auth.mf.repeatPassword")}</Label>
-                  <Input id="auth-new-password-2" type="password" value={password2} minLength={MIN_PASSWORD} maxLength={128} autoComplete="new-password" required onChange={(e) => setPassword2(e.target.value)} className="h-10 rounded-lg" />
-                </div>
-                <Button type="submit" disabled={loading || password.length < MIN_PASSWORD || password !== password2} className="h-11 w-full rounded-lg">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.mf.resetSave")}
-                </Button>
-              </form>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">{t("auth.mf.resetInvalid")}</p>
-                <Button type="button" variant="outline" className="h-11 w-full" onClick={() => { setMode("signin"); setStep("reset-request"); }}>{t("auth.mf.resetSend")}</Button>
-              </div>
-            )
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">{t("auth.pw.resetGone")}</p>
+              <Button type="button" variant="outline" className="h-11 w-full" onClick={() => { setMode("signin"); setStep("choose"); }}>{t("auth.mf.backToSignIn")}</Button>
+            </div>
           )}
 
           {mode === "signup" && !adminPortal && (
@@ -645,6 +532,11 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
               <Button type="submit" className="h-11 w-full gap-2 rounded-lg font-medium" disabled={!canSubmitSignUp({ consented, busy: loading, unavailable, emailError: !!emailError })}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />} {t("auth.pk.signupCta")}
               </Button>
+              {passwordAvailable && (
+                <Button type="button" variant="ghost" className="h-auto min-h-11 w-full gap-2 whitespace-normal text-sm" disabled={!canSubmitSignUp({ consented, busy: loading, unavailable, emailError: !!emailError })} onClick={() => void signUp(null, true)}>
+                  <Lock className="h-4 w-4 shrink-0" aria-hidden /> {t("auth.pw.signupWithPassword")}
+                </Button>
+              )}
               {linkButton("signin", t("auth.pk.haveAccount"), Fingerprint)}
             </form>
           )}
