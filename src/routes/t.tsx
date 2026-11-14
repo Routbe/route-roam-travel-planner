@@ -6,6 +6,7 @@ import { Loader2, ShieldCheck, ShieldX } from "lucide-react";
 import { pendingCardStepUpFn, verifyCardTapFn, type CardTapResult } from "@/lib/wallet/card-tap.functions";
 import { activateCardFn, type CardActivationResult } from "@/lib/wallet/card-admin.functions";
 import { takeActivationIntent } from "@/lib/wallet/card-activation-intent";
+import { signalSecurityFactorsChanged } from "@/lib/security/shield-events";
 import { cardSecretFromUrl } from "@/lib/crypto-enclave/card-fragment";
 import { deliverCardSecret, findCardListeners, type CardListener } from "@/lib/recovery/card-handoff";
 import { Button } from "@/components/ui/button";
@@ -243,7 +244,7 @@ function CardTap() {
             if (busy) return;
             setView({ kind: "activating", ...tapBytes });
             activate({ data: { ...tapBytes, code: code.trim() || null } })
-              .then((r: CardActivationResult) => setView({ activation: r.status }))
+              .then((r: CardActivationResult) => { signalSecurityFactorsChanged(); setView({ activation: r.status }); })
               .catch(() => setView({ activation: "denied" }));
           }}
         >

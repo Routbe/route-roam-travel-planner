@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { cn } from "@/lib/utils";
 import { withStepUp } from "@/components/auth/StepUpDialog";
 import { createWalletPass, getCardLiveness, getMyCardFront, getSecureCardToken, getWalletCard, getWalletStatus, saveMyCardDesign, setMyCardFront, setMyCardFrozen, verifyCardLiveCode } from "@/lib/wallet/wallet.functions";
+import { signalSecurityFactorsChanged } from "@/lib/security/shield-events";
 import { pickCardView } from "@/lib/wallet/card-liveness";
 import { contrastRatio } from "@/lib/wallet/card-style";
 import { CARD_MATERIALS, defaultMaterial, materialsFor, nearestSafeAccent, type AgeTier, type CardMaterial } from "@/lib/wallet/card-cmf";
@@ -297,6 +298,7 @@ export function RoutCardDialog({ open, onOpenChange, handle, space, inline = fal
       await withStepUp(() => freezeCard({ data: { frozen: next, space } }), "card_lifecycle");
       toast.success(next ? t("card.frozen", { defaultValue: "Kaart bevroren." }) : t("card.unfrozen", { defaultValue: "Kaart weer actief." }));
       setLiveNonce((n) => n + 1);
+      signalSecurityFactorsChanged();
     } catch {
       toast.error(t("card.freezeFailed", { defaultValue: "Bevriezen lukt nu niet." }));
     } finally {
