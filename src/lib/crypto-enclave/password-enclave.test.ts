@@ -62,6 +62,27 @@ describe("paranoid password slots", () => {
   });
 });
 
+describe("password.equal (repeat field check without leaving the worker)", () => {
+  it("is true only for two different slots holding the same bytes", async () => {
+    const a = (await call("password.open", {})).slot;
+    const b = (await call("password.open", {})).slot;
+    await typeInto(a, "correct horse ä€");
+    await typeInto(b, "correct horse ä€");
+    expect((await call("password.equal", { a, b })).equal).toBe(true);
+    // Same slot twice proves nothing about a second entry.
+    expect((await call("password.equal", { a, b: a })).equal).toBe(false);
+    await call("password.backspace", { slot: b });
+    expect((await call("password.equal", { a, b })).equal).toBe(false);
+    await typeInto(b, "x");
+    expect((await call("password.equal", { a, b })).equal).toBe(false);
+    // Comparing does not consume or alter either slot.
+    expect(slotResidueForTest(a)).toEqual({ length: 18, tailZero: true });
+    await call("password.close", { slot: a });
+    await call("password.close", { slot: b });
+    expect(await code("password.equal", { a, b })).toBe("unknown_handle");
+  });
+});
+
 describe("pow.solve", () => {
   it("finds a nonce meeting the server's bits", async () => {
     const challenge = crypto.getRandomValues(new Uint8Array(32));
