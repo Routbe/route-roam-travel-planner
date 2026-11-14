@@ -78,7 +78,8 @@ describe("Veiligheidsschild", () => {
   it("a failed lookup shows 'unknown' and never claims a level", async () => {
     server.fn.mockRejectedValue(new Error("down"));
     mount();
-    await waitFor(() => expect(screen.getByTestId("shield-trigger").getAttribute("data-level")).toBe("unknown"));
+    // The shield retries once (about 1 s) before giving up.
+    await waitFor(() => expect(screen.getByTestId("shield-trigger").getAttribute("data-level")).toBe("unknown"), { timeout: 4000 });
   });
 
   it("renders nothing for a signed-out visitor and asks the server nothing", () => {
