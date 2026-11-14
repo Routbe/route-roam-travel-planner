@@ -1,0 +1,175 @@
+/**
+ * Message contract between the UI thread and the cryptographic enclave worker.
+ * Types only: importing this file never pulls crypto code into the main bundle.
+ *
+ * Secrets that must come from the user (a typed Master Key, a handoff code, a
+ * passkey PRF output) cross into the worker once; keys never come back out.
+ * Typed arrays are sent as transferables, so the sender's copy is detached.
+ */
+import type { SealedBlob } from "@/lib/e2ee/crypto";
+import type { PrivateEnvelope } from "@/lib/ledger/crypto";
+import type { Capability, CapabilityGrant } from "@/lib/protocol/capabilities";
+import type { EventDraft, SignedEvent } from "@/lib/protocol/events";
+import type { RecoveryCeremony } from "./recovery-mpc";
+import type { SubjectClaim } from "@/lib/recovery/pairwise";
+
+/** Public metadata of a decrypted handoff; the full config stays inside the worker. */
+export type VaultSummary = { name: string; slug?: string; description?: string };
+export type SealedForUser = { encrypted: SealedBlob; keyId: string };
+export type LedgerDraft = { keyId: string; publicKey: JsonWebKey; recoveryCode: string; envelopes: PrivateEnvelope[] };
+
+export interface EnclaveOps {
+  /** Import the ephemeral secret (then wipe it), derive the claim proof and keep the vault key. */
+  "vault.prepare": { req: { secret: string }; res: { handle: string; claimProof: string } };
+  /** Decrypt + validate; retained configuration is immediately re-sealed inside the worker. */
+  "vault.decrypt": { req: { handle: string; vaultId: string; blob: string; expiresAt: string }; res: VaultSummary };
+  /** Re-encrypt the held configuration with the member's device key, then wipe it. */
+  "vault.reseal": { req: { handle: string; userId: string }; res: SealedForUser };
+  "vault.discard": { req: { handle: string }; res: null };
+
+  "deviceKey.status": { req: { userId: string }; res: { keyId: string } | null };
+  /** Entropy is wiped before returning; only a non-extractable pending key remains. */
+  "masterKey.generate": { req: Record<string, never>; res: { handle: string; mnemonic: string } };
+  "masterKey.commitPending": { req: { handle: string; userId: string }; res: { keyId: string } };
+  "masterKey.discardPending": { req: { handle: string }; res: null };
+  "masterKey.unlock": { req: { userId: string; mnemonic: string }; res: { keyId: string } };
+
+  /** Generic E2EE: UI hands plaintext in (transferred), gets ciphertext back. */
+  "data.seal": { req: { userId: string; aad: string; plaintext: Uint8Array }; res: SealedForUser };
+  "data.open": { req: { userId: string; aad: string; blob: string }; res: { plaintext: Uint8Array } };
+
+  /** Encrypted activity ledger (RSA-OAEP + AES-GCM). Private keys live only in the worker. */
+  "ledger.generate": { req: { prf?: Uint8Array }; res: LedgerDraft };
+  "ledger.activate": { req: { keyId: string }; res: null };
+  "ledger.discardPending": { req: { keyId: string }; res: null };
+  "ledger.unlock": { req: { keyId: string; envelope: PrivateEnvelope; recoveryCode?: string; prf?: Uint8Array }; res: null };
+  "ledger.decrypt": { req: { keyId: string; items: { id: string; payload: string }[] }; res: Record<string, string> };
+  "ledger.lock": { req: { keyId?: string }; res: null };
+
+  /**
+   * Recovery ceremony: 3-of-4 (passkey, ROUT Card, 24 paper words, ROUT's
+   * server piece; version 3). Without a freshly tapped card nothing is begun.
+   * The Master Key comes from the typed words, or is generated fresh for a
+   * device without one; it is wiped inside `begin`. Only the paper words come
+   * back, once, for display; the member retypes three of them before the
+   * passkey seals the last shard.
+   */
+  "ceremony.begin": {
+    /** cardSecret: 32 bytes from a freshly tapped ROUT Card's URL fragment (card-factor.ts); required. Transferred, wiped. */
+    req: { userId: string; serverFactorKey: Uint8Array; mnemonic?: string; cardSecret: Uint8Array };
+    res: { handle: string; paperWords: string; checkPositions: number[]; keyId: string; fresh: boolean; version: 3 };
+  };
+  "ceremony.checkWords": { req: { handle: string; answers: { position: number; word: string }[] }; res: { ok: boolean } };
+  "ceremony.sealDevice": { req: { handle: string; prf: Uint8Array }; res: { ceremony: RecoveryCeremony; keyId: string; loginKey: Uint8Array } };
+  /** After the server stored the ceremony: installs a freshly made Master Key on this device. */
+  "ceremony.commit": { req: { handle: string; userId: string }; res: { keyId: string } };
+  "ceremony.discard": { req: { handle: string }; res: null };
+  /** The ceremony's threshold (3 of 4 for version 3) of passkey PRF, paper words, ROUT Card secret and the server's opened share rebuild and install the key. */
+  "ceremony.restore": {
+    req: { userId: string; ceremony: RecoveryCeremony; keyId: string; prf?: Uint8Array; paperWords?: string; serverShare?: Uint8Array; cardSecret?: Uint8Array };
+    res: { keyId: string };
+  };
+  /** Sign-in by recovery: same as restore, plus an Ed25519 signature over the server challenge. */
+  "ceremony.recoverLogin": {
+    req: { userId: string; ceremony: RecoveryCeremony; keyId: string; challenge: string; prf?: Uint8Array; paperWords?: string; serverShare?: Uint8Array; cardSecret?: Uint8Array };
+    res: { keyId: string; signature: Uint8Array };
+  };
+  /** Pairwise partner subject from a passkey PRF root (transferred, wiped). */
+  "pairwise.claim": { req: { root: Uint8Array; sector: string; nonce: string }; res: SubjectClaim };
+
+  /**
+   * RVE1 member-device key (ML-KEM-1024 + X25519), created on first use. Its
+   * seed is sealed under the device key and never leaves the worker; only the
+   * key id and public key come back.
+   */
+  "rve1.deviceKey": { req: { userId: string }; res: { kid: string; publicKey: Uint8Array } };
+  /** Seal a vcc_ credential (plaintext transferred, wiped) for this member's own device key. */
+  "rve1.seal": { req: { userId: string; kind: "vcc"; purpose: string; plaintext: Uint8Array }; res: { envelope: Uint8Array } };
+  /** Open a vcc_ envelope; the plaintext is transferred to the UI, which must wipe it. */
+  "rve1.open": { req: { userId: string; kind: "vcc"; purpose: string; envelope: Uint8Array }; res: { plaintext: Uint8Array } };
+
+  "hash.sha256Hex": { req: { text: string }; res: string };
+
+  // ---- Password engine (Stap 3): Hashcash, paranoid input, OPAQUE + Argon2id ----
+
+  /** Paranoid input (opt-in): a fixed 1-page Wasm memory per slot; key bytes stream in, never a JS string. */
+  "password.open": { req: Record<string, never>; res: { slot: string; maxBytes: number } };
+  /** One key's UTF-8 bytes (transferred, wiped). Returns the number of characters for the dots. */
+  "password.key": { req: { slot: string; key: Uint8Array }; res: { length: number } };
+  "password.backspace": { req: { slot: string }; res: { length: number } };
+  "password.clear": { req: { slot: string }; res: { length: number } };
+  "password.close": { req: { slot: string }; res: null };
+  /** Hashcash nonce for a server challenge; abortable between batches. */
+  "pow.solve": { req: { challenge: Uint8Array; bits: number }; res: { nonce: Uint8Array } };
+  /** The password source is consumed: a paranoid slot is wiped and closed, typed bytes are wiped. */
+  "opaque.registerStart": { req: { password: PasswordSource }; res: { handle: string; request: Uint8Array } };
+  /** Runs Argon2id (64 MiB, 4 passes) in the engine; the vault key stays pending under the handle. */
+  "opaque.registerFinish": { req: { handle: string; response: Uint8Array }; res: { upload: Uint8Array; keyId: string } };
+  "opaque.loginStart": { req: { password: PasswordSource }; res: { handle: string; ke1: Uint8Array } };
+  /** Fails with auth_failed for a wrong password or an unknown account (indistinguishable). */
+  "opaque.loginFinish": { req: { handle: string; ke2: Uint8Array }; res: { ke3: Uint8Array; keyId: string } };
+  /** After the server accepted: installs the pending vault key (non-extractable) for this member. */
+  "opaque.commit": { req: { handle: string; userId: string }; res: { keyId: string } };
+  "opaque.discard": { req: { handle: string }; res: null };
+  /** Whether this worker holds a password vault key for the member. */
+  "opaque.vaultKey": { req: { userId: string }; res: { keyId: string } | null };
+  /**
+   * Wipes every password slot, handshake, pending and installed password vault
+   * key and live engine memory. Queued like any request, so it runs only when
+   * the worker is idle (H.1): after 30 s hidden, on lock and before logout.
+   */
+  "secure.wipe": { req: Record<string, never>; res: { wiped: number } };
+  /**
+   * Blind Hash Matching: hash the member's identities with the partner's
+   * domain separation and return only the indexes that match a partner hash.
+   */
+  "bhm.match": { req: { clientId: string; hashes: string[]; identities: { kind: string; value: string }[] }; res: number[] };
+
+  /** Protocol identity (did:key, Ed25519). Created on first use, stored sealed under the device key. */
+  "protocol.identity": { req: { userId: string }; res: { did: string } };
+  /** Seal `plaintext` (transferred) for the stream, then hash-chain and sign the event. */
+  "protocol.sealEvent": {
+    req: { userId: string; stream: string; seq: number; prev: string | null; kind: string; plaintext: Uint8Array; capId?: string };
+    res: SignedEvent;
+  };
+  /** Sign a control event (`stream.genesis`, `cap.revoke`, `pub.*`) whose body is public by design. */
+  "protocol.signEvent": { req: { userId: string; draft: EventDraft }; res: SignedEvent };
+  "protocol.openEvent": { req: { userId: string; event: SignedEvent }; res: { plaintext: Uint8Array } };
+  "protocol.dpop": { req: { userId: string; method: string; url: string }; res: { proof: string } };
+  "protocol.delegate": { req: { userId: string; grant: CapabilityGrant; parent?: Capability | null }; res: Capability };
+  "protocol.verifyChain": { req: { events: SignedEvent[] }; res: { ok: true } | { ok: false; error: string; at: number } };
+}
+
+/** Where a password comes from: a paranoid slot, or UTF-8 bytes of the normal field (transferred). */
+export type PasswordSource = { slot: string } | { bytes: Uint8Array };
+
+export type EnclaveOp = keyof EnclaveOps;
+export type EnclaveArgs<K extends EnclaveOp> = EnclaveOps[K]["req"];
+export type EnclaveResult<K extends EnclaveOp> = EnclaveOps[K]["res"];
+
+export type EnclaveRequest = { [K in EnclaveOp]: { id: number; op: K; args: EnclaveArgs<K> } }[EnclaveOp];
+
+export type EnclaveErrorCode =
+  | "enclave_unavailable"
+  | "enclave_crashed"
+  | "timeout"
+  | "invalid_input"
+  | "unknown_handle"
+  | "decrypt_failed"
+  | "invalid_config"
+  | "invalid_mnemonic"
+  | "master_key_required"
+  | "card_required"
+  | "key_mismatch"
+  | "no_device_key"
+  | "aborted"
+  | "auth_failed"
+  | "password_too_short"
+  | "password_too_long"
+  | "pow_failed"
+  | "internal";
+
+export type EnclaveResponse =
+  | { id: number; started: true }
+  | { id: number; ok: true; result: unknown }
+  | { id: number; ok: false; code: EnclaveErrorCode };
