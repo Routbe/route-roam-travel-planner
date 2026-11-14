@@ -76,7 +76,7 @@ describe("password.equal (repeat field check without leaving the worker)", () =>
     await typeInto(b, "x");
     expect((await call("password.equal", { a, b })).equal).toBe(false);
     // Comparing does not consume or alter either slot.
-    expect(slotResidueForTest(a)).toEqual({ length: 18, tailZero: true });
+    expect(slotResidueForTest(a)).toEqual({ length: 14 + 2 + 3, tailZero: true });
     await call("password.close", { slot: a });
     await call("password.close", { slot: b });
     expect(await code("password.equal", { a, b })).toBe("unknown_handle");
