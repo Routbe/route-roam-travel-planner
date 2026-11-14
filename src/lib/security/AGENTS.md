@@ -1,0 +1,2 @@
+## Veiligheidsschild
+- The top-bar security level comes only from getSovereigntyHealthScore (src/lib/security/sovereignty-score.ts), recomputed on every read from live factors (passkeys, pake_registered, member_card_factor, root card freeze state) and never stored; unknown facts never raise the level, the score never gates access, and pages that change a factor call signalSecurityFactorsChanged after the server confirms. Why: a stored or optimistic level could drift from the real factors or be mistaken for authorization.

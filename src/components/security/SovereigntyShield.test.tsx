@@ -103,7 +103,7 @@ describe("Veiligheidsschild", () => {
       await screen.findByTestId("shield-trigger");
       view.unmount();
     }
-    const ours = (spy: typeof add) => spy.mock.calls.filter(([type]) => type === "rout:security-factors-changed").length;
+    const ours = (spy: typeof add) => spy.mock.calls.filter(([type]) => String(type) === "rout:security-factors-changed").length;
     expect(ours(add)).toBeGreaterThan(0);
     expect(ours(remove)).toBe(ours(add));
     expect(client.getQueryCache().find({ queryKey: shieldQueryKey("member-1") })?.getObserversCount()).toBe(0);
