@@ -12,7 +12,7 @@ import { authClient } from "@/lib/auth-client";
 import { i18n, useTranslation } from "@/lib/i18n";
 
 /** ROUT card actions accept every active factor (SMS, recovery code, password too); a scan only a real second factor. */
-export type StepUpScope = "card_reveal" | "card_lifecycle" | "card_scan";
+export type StepUpScope = "card_reveal" | "card_lifecycle" | "card_scan" | "password_set";
 type Waiter = { resolve: (ok: boolean) => void; action?: StepUpScope };
 /** ROUT Card tap: an intent is open (waiting), this phone reads NFC (scanning), or it ended. */
 type CardPhase = "idle" | "starting" | "waiting" | "scanning" | "checking" | "expired" | "failed";
@@ -233,7 +233,7 @@ export function StepUpDialog() {
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5" /> {t("stepUp.title")}
           </DialogTitle>
-          <DialogDescription>{waiter?.action ? t("stepUp.cardDescription") : t("stepUp.description")}</DialogDescription>
+          <DialogDescription>{waiter?.action && waiter.action !== "password_set" ? t("stepUp.cardDescription") : t("stepUp.description")}</DialogDescription>
         </DialogHeader>
         {loaded && waiter?.action && methods.length === 0 && (
           <p role="alert" className="rounded-md border border-border bg-muted p-2 text-sm">{t("stepUp.needTwoFactor")}</p>
