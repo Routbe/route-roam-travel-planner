@@ -41,6 +41,8 @@ use the editor.
 - Zero-fill owned secret/plaintext byte views in finally, hold pending master keys non-extractably and retain vault configuration only as ciphertext; recovery strings/WebAuthn input and engine-internal copies are not erasable or XSS-isolated. Why: cleanup must be testable without claiming a hardware enclave.
 - Worker dispatch announces execution start for per-operation deadlines; auth changes terminate volatile state and invalidate captured crypto/HTTP scopes, while owner-keyed UI sessions reject stale completions and preserve persisted device keys. Why: logout, queue delays and late replies must not revive keys or another owner's plaintext.
 
+- The OPAQUE (RFC 9807) + Argon2id password engine is one allocator-free Rust Wasm module (wasm/rout-opaque) with imported fixed memory per operation, zero-filled in finally; it runs only in the crypto worker and server-only handlers, and its loader refuses bytes that do not match the SHA-384 in opaque-wasm-pin.ts. Rebuild only with wasm/rout-opaque/build.sh under the toolchain pinned in its rust-toolchain.toml (official rustup build; distro builds of the same version are refused), update the pin in the same change, and keep .github/workflows/wasm-reproducible.yml green. Why: the shipped engine must be byte-for-byte traceable to its source, and the password and derived keys must never touch the UI thread or a growable heap.
+
 ## Interface materials
 - Keep workspace material preferences separate from colour mode; activate root data-theme only for authenticated tools and QR/Studio routes, including their portals, and exclude profile/QR/export artwork. Why: the public gateway retains the imported appearance and Creator restores legacy materials without altering user designs.
 
