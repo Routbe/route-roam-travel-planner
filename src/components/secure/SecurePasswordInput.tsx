@@ -23,6 +23,8 @@ export type SecurePasswordHandle = {
   reset: () => void;
   /** Internal: the paranoid slot handle, for sameAs. */
   slot: () => string | null;
+  /** Internal: the normal field's current value, for sameAs (already a JS string there). */
+  peek: () => string;
   mode: PasswordInputMode;
 };
 
@@ -111,7 +113,7 @@ export const SecurePasswordInput = forwardRef<SecurePasswordHandle, Props>(funct
       if (!other || other.mode !== mode) return false;
       if (mode === "normal") {
         const a = input.current?.value ?? "";
-        const b = (other as SecurePasswordHandle & { _value?: () => string })._value?.() ?? "";
+        const b = other.peek();
         return a.length > 0 && a === b;
       }
       await queue.current;
@@ -145,8 +147,8 @@ export const SecurePasswordInput = forwardRef<SecurePasswordHandle, Props>(funct
       setDots(0);
       if (mode === "paranoid") void openSlot().catch(() => null);
     },
-    _value: () => input.current?.value ?? "",
-  }) as SecurePasswordHandle, [mode, dots, normalLength, openSlot]);
+    peek: () => input.current?.value ?? "",
+  }), [mode, dots, normalLength, openSlot]);
 
   return (
     <div className="space-y-1">
