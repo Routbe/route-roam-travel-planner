@@ -225,6 +225,13 @@ textarea[data-tour^="cc-"] {
   --destructive-foreground: 40 43% 97%;
   --warning: 32 90% 44%;
   --warning-foreground: 40 43% 97%;
+  /* Veiligheidsschild: each pair keeps >= 7:1 (WCAG AAA), checked by shield-tokens.test.ts. */
+  --shield-basic: 36 100% 93%;
+  --shield-basic-foreground: 24 90% 20%;
+  --shield-sovereign: 146 48% 91%;
+  --shield-sovereign-foreground: 152 75% 16%;
+  --shield-hardware: 240 12% 9%;
+  --shield-hardware-foreground: 43 82% 62%;
   --identity-verified: #1d9bf0;
   --sketch-ink: hsl(var(--foreground) / 0.45);
   --sketch-echo: hsl(var(--foreground) / 0.25);
@@ -304,6 +311,12 @@ textarea[data-tour^="cc-"] {
   --destructive-foreground: 42 31% 94%;
   --warning: 34 92% 55%;
   --warning-foreground: 30 6% 7%;
+  --shield-basic: 28 55% 13%;
+  --shield-basic-foreground: 38 95% 72%;
+  --shield-sovereign: 150 38% 11%;
+  --shield-sovereign-foreground: 144 58% 68%;
+  --shield-hardware: 240 10% 4%;
+  --shield-hardware-foreground: 44 88% 64%;
   --border: 30 5% 22%;
   --border-ink: 42 20% 88%;
   --input: 30 5% 24%;
@@ -344,6 +357,12 @@ textarea[data-tour^="cc-"] {
   --color-tour-scrim: hsl(var(--tour-scrim));
   --color-primary: hsl(var(--primary));
   --color-live: hsl(var(--live));
+  --color-shield-basic: hsl(var(--shield-basic));
+  --color-shield-basic-foreground: hsl(var(--shield-basic-foreground));
+  --color-shield-sovereign: hsl(var(--shield-sovereign));
+  --color-shield-sovereign-foreground: hsl(var(--shield-sovereign-foreground));
+  --color-shield-hardware: hsl(var(--shield-hardware));
+  --color-shield-hardware-foreground: hsl(var(--shield-hardware-foreground));
   --color-identity-verified: var(--identity-verified);
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
@@ -1987,3 +2006,8 @@ html[data-liquid]:not([data-theme="mechanical"]) [style*="--lg-filter"] { backdr
 .home-card-key { --home-key-ink: oklch(0.12 0.005 260); --home-key-text: oklch(0.92 0.01 90); background: linear-gradient(160deg, oklch(0.2 0.005 260), var(--home-key-ink)); color: var(--home-key-text); border-color: oklch(0.32 0.005 260); }
 .home-chip { width: 38px; height: 28px; border-radius: 5px; background: linear-gradient(135deg, hsl(var(--muted-foreground) / .6), hsl(var(--muted-foreground) / .2)); }
 @media (prefers-reduced-motion: reduce) { .home-ledge, .home-card { transition: none; } .home-card:hover, .home-ledge:hover { transform: none; } }
+
+/* Veiligheidsschild: one soft glow when the level rises; nothing under reduced motion. */
+@keyframes shield-promote { 0% { box-shadow: 0 0 0 0 currentColor; } 60% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.shield-promoted { animation: shield-promote 1.2s ease-out 1; }
+@media (prefers-reduced-motion: reduce) { .shield-promoted { animation: none; } }
