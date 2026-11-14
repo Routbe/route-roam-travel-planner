@@ -33,8 +33,9 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Mode = "signin" | "signup" | "recovery" | "reset";
 /** Steps inside the sign-in card. */
-type SignInStep = "choose" | "password" | "link-sent" | "second" | "reset-request" | "reset-sent";
-const MIN_PASSWORD = 12;
+type SignInStep = "choose" | "link-sent" | "second";
+/** OPAQUE password pages: their own cross-origin-isolated documents (full page load only). */
+const SECURE_PASSWORD_PATH = "/secure/password";
 type ApiResult = { data?: Record<string, unknown>; error?: { code?: string; message?: string } };
 
 function errorMessage(error: unknown, fallback: string) {
@@ -84,10 +85,7 @@ export default function AuthNeon({ initialMode = "signin", initialProviders = nu
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<SignInStep>("choose");
-  const [password, setPassword] = useState("");
-  const [password2, setPassword2] = useState("");
   const [mailCode, setMailCode] = useState("");
-  const [resetToken, setResetToken] = useState<string | null>(null);
   const [recoveryFiled, setRecoveryFiled] = useState(false);
   const [recoveryToken, setRecoveryToken] = useState<string | null>(null);
   const [consented, setConsented] = useState(false);
