@@ -13,6 +13,7 @@ import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { InviteButton } from "@/components/InviteButton";
 import { MobileMenu } from "@/components/MobileMenu";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { SovereigntyShield } from "@/components/security/SovereigntyShield";
 
 import { cn } from "@/lib/utils";
 import { useMatches, useRouterState } from "@tanstack/react-router";
@@ -144,6 +145,8 @@ export function AppLayout({
             </Link>
             <HeaderControls>
               <LanguageToggle className="hidden sm:inline-flex" />
+              {/* Owner-only security level; signed-in tools only, never on public pages. */}
+              {isOsRoute ? <SovereigntyShield /> : null}
               <InviteButton />
               <ProfileMenu />
               <MobileMenu />

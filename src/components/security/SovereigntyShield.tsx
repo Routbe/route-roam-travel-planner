@@ -99,12 +99,10 @@ export function SovereigntyShield() {
           <Button
             type="button"
             variant="ghost"
-            aria-haspopup="dialog"
             aria-label={t("shield.trigger.aria", { level: levelTitle })}
             data-testid="shield-trigger"
             data-level={score.level ?? "unknown"}
             className={TRIGGER_BOX}
-            onClick={() => { if (isMobile) setOpen(true); }}
           >
             <span aria-hidden className={cn(PILL_BOX, look.pill, glow && "shield-promoted")} onAnimationEnd={() => setGlow(false)}>
               <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
