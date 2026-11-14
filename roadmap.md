@@ -145,7 +145,13 @@
 - [ ] Stap 3 eerste inlogtest: wacht op deploy van deze code naar Vercel met ROUT_VAULT_KEK gezet (eerste wachtwoord maakt de server-sleutel en OPAQUE-setup)
 - [ ] Stap 6: 0268/0269 bij herschrijven voor v4 hernummeren boven 0270 (anders kan de health-probe de EXPAND niet bewijzen)
 - [ ] Stap 3 nazorg: /secure/* krijgt bij hosting op Vercel dezelfde headers (nu via src/server.ts); de algemene securityHeaders() worden nergens toegepast (bevinding, niet gewijzigd)
-- [ ] Stap 4: Veiligheidsschild (3 niveaus) in topbalk, NL/EN/FR/DE
+- [ ] Stap 4: Veiligheidsschild (3 niveaus) in topbalk, NL/EN/FR/DE (GO eigenaar 2026-11-14, geen migratie)
+  - [ ] Berekening getSovereigntyHealthScore + tests (besluit A: niveau 3 = kaart + passkey; besluit B: bevroren kaart schort 3 op)
+  - [ ] Serverfunctie (alleen lezen: passkeys, pake_registered, member_card_factor, kaartstatus)
+  - [ ] Knop in topbalk (44×44, geen verspringen) + paneel/lade, 3 kleurtokens met contrasttest ≥ 7:1
+  - [ ] Teksten NL/EN/FR/DE + vertaaltest
+  - [ ] Opnieuw controleren na passkey/kaart-wijzigingen; geen timers/luisteraars die blijven hangen (geheugentest)
+  - [ ] AGENTS.md bijwerken; volledige tests + typecheck
 - [ ] Stap 5: FIDO MDS3-attestatie (gesigneerde lijst, periodiek ophalen)
 - [ ] Stap 6: herstel v4 (2-van-3 zonder kaart, 3-van-4 met kaart); 0268/0269 herschrijven volgens het TLA+-model (verse mastergeneratie per ceremonie, tweede step-up bij terugschalen, idempotentiesleutels, TTL op wachtende ceremonie) + PGlite-test die TLC-sporen naspeelt
 - [ ] Stap 7: gasten zonder spoor (pseudoniem per epoch, BBS+, blinde buckets, ZK-range op commitment)
